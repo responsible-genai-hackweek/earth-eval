@@ -247,6 +247,17 @@ figures are written atomically only after all required checkpoints pass
 validation; existing checkpoints can rebuild final products without repeating
 the full data download.
 
+## Guidance for future agents
+
+[`AGENTS.md`](AGENTS.md) records the repository-wide scientific invariants,
+workflow expectations, validation requirements, and code-review rules. The
+repo-local
+[`snow-hydrology-fsca-evaluation`](.agents/skills/snow-hydrology-fsca-evaluation/SKILL.md)
+skill preserves the domain reasoning behind the product match, regridding,
+metrics, masks, wet/dry composites, significance tests, figures, and resumable
+execution. Codex can select it automatically for matching tasks, or it can be
+invoked explicitly as `$snow-hydrology-fsca-evaluation`.
+
 ## Verification
 
 ```bash
