@@ -1,0 +1,13 @@
+{
+  "title": "USGS 3DEP coarse bare-earth elevation subset",
+  "source": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "downloaded": "2026-08-26",
+  "bbox_epsg_4326": [-109.0625, 36.75, -104.0625, 41.25],
+  "shape": [90, 100],
+  "pixel_size_degrees": [0.05, 0.05],
+  "crs": "EPSG:4326",
+  "pixel_type": "float32",
+  "units": "meters",
+  "interpolation": "bilinear",
+  "purpose": "Hillshade, 2000 and 3000 m contours, and mean MERRA-2 cell elevations for the MERRA-2/MODSCAG comparison figures"
+}
