@@ -1,153 +1,264 @@
 # MERRA-2 / MODSCAG fractional snow-cover comparison
 
-This project compares daily MERRA-2 land snow-cover fraction with daily 500 m
-STC-MODSCAG on-ground snow fraction. The configured experiment covers water
-years 2010–2023 over the 72 MERRA-2 cells centered from 109–104°W and 37–41°N.
+This project evaluates MERRA-2 fractional snow-covered area (fSCA) against the
+daily 500 m STC-MODSCAG product over Colorado. It provides a resumable,
+parallel pipeline for water years 2010–2023, spatial and elevation-dependent
+error analyses, wet/dry-year composites, and cellwise significance tests.
 
-The research-plan-implement record is kept in:
+The configured domain contains 72 MERRA-2 cells: eight longitude columns by
+nine latitude rows. Cell centers fall within 109–104°W and 37–41°N; because
+those bounds select MERRA-2 centers, the complete grid-cell edges extend from
+109.0625–104.0625°W and 36.75–41.25°N.
 
-- [`research/FSCA_PRODUCT_NOTES.md`](research/FSCA_PRODUCT_NOTES.md)
-- [`plan/FSCA_PIPELINE_PLAN.md`](plan/FSCA_PIPELINE_PLAN.md)
-- [`plan/MULTIYEAR_2010_2023_PLAN.md`](plan/MULTIYEAR_2010_2023_PLAN.md)
-- [`plan/MULTIYEAR_2010_2025_PLAN.md`](plan/MULTIYEAR_2010_2025_PLAN.md)
-  (superseded)
+## Current analysis
 
-## Daily comparison contract
-
-- Reference: `STC_MODSCGDRF_HIST` v1 `snow_fraction`, including the product's
-  documented spatiotemporal interpolation; `days_without_observation` is
-  retained as a coverage diagnostic.
-- Model: MERRA-2 `M2T1NXLND` v5.12.4 `FRSNO`, time index 15. This hourly
-  time-averaged field represents 15:00–16:00 UTC and is timestamped 15:30 UTC.
-- Historical MERRA stream naming is resolved by date: stream 300 through 2010,
-  stream 400 beginning in 2011, and reprocessed stream 401 for September 2020
-  and June–September 2021.
-- Spatial matching: equal-area 500 m MODIS sinusoidal pixel centers are binned
-  into each complete MERRA-2 cell selected by its center.
+- Period: water years 2010–2023.
+- Reference: daily `STC_MODSCGDRF_HIST` v1 `snow_fraction` at 500 m.
+- Model: MERRA-2 `M2T1NXLND` v5.12.4 `FRSNO` at time index 15.
+- Comparison time: 15:00–16:00 UTC, timestamped 15:30 UTC.
+- Spatial matching: MODSCAG pixel-center aggregation to the native
+  0.625° × 0.5° MERRA-2 grid.
 - Error sign: MERRA-2 minus MODSCAG.
-- Summaries: paired-fine-pixel-area weighted bias and MAE in percentage points,
-  pooled by water-year month and meteorological season for each MERRA cell and
-  for the whole domain.
-- Missing-reference policy: an existing daily granule whose `snow_fraction` is
-  all fill is excluded rather than interpolated again. Calendar, paired, and
-  missing-reference day counts are retained.
+- Parallelism: 16 monthly workers with at most eight simultaneous MODSCAG FTP
+  connections.
+- Persistence: monthly sufficient-statistic checkpoints and final results only;
+  downloaded daily inputs are deleted immediately.
 
-## Installation
+The MODSCAG product includes its documented spatiotemporal interpolation.
+`days_without_observation` is retained as a coverage diagnostic rather than
+used to discard the product's interpolated estimates.
 
-The tested environment is Python 3.12. Install the package and its test tools:
+## Key results
+
+The wet composite combines WY2011, 2017, 2019, and 2023. The dry composite
+combines WY2012, 2013, 2015, and 2018.
+
+![Wet- and dry-year spatial composites](results/wet_dry_composite_spatial_bias_mae.png)
+
+The latest cellwise significance figure plots normalized mean bias. Hatching
+marks an **uncorrected two-sided `p < 0.05`**; no FDR or other multiple-testing
+correction is applied. Black cells have pooled MODIS fSCA below 0.10.
+
+![Wet- and dry-year normalized bias significance](results/wet_dry_pixel_normalized_bias_two_sided_ttest.png)
+
+## Data and comparison contract
+
+### MERRA-2
+
+The model field is `FRSNO` from the hourly time-averaged land collection
+`M2T1NXLND` v5.12.4. Production-stream filenames are resolved by date:
+
+- stream 300 through 2010;
+- stream 400 beginning in 2011; and
+- reprocessed stream 401 for September 2020 and June–September 2021.
+
+MERRA-2 is read remotely through Earthdata DAP4 and spatially subset before
+transfer.
+
+### MODSCAG and regridding
+
+For each daily MODSCAG tile, the pipeline:
+
+1. reads the native MODIS sinusoidal `x` and `y` coordinates;
+2. transforms every 500 m pixel center to longitude and latitude;
+3. assigns each center to exactly one MERRA-2 cell;
+4. excludes fill values (`snow_fraction > 100`);
+5. averages the remaining percentages within each MERRA-2 cell; and
+6. masks the daily cell if valid coverage is below 80% of its expected MODSCAG
+   pixel count.
+
+This is pixel-center binning, not bilinear interpolation. Because the MODIS
+sinusoidal pixels are equal area, the arithmetic mean is an equal-area cell
+mean. Boundary pixels are assigned by their centers; fractional boundary
+overlap is not calculated.
+
+The mapping and reduction are implemented in
+[`products.py`](src/merra_modis_comparison/products.py). The production call and
+80% support mask are in
+[`pipeline.py`](src/merra_modis_comparison/pipeline.py).
+
+Run the one-day diagnostic to see the native and target grids:
 
 ```bash
-/Users/clintonalden/miniconda3/envs/env1/bin/python -m pip install -e '.[test]'
+./plot_one_day_regridding.zsh
 ```
 
-Configure NASA Earthdata Login with either `~/.netrc` or `EARTHDATA_TOKEN`.
-The program never accepts credentials as command-line arguments or writes them
-to its outputs.
+It downloads the three archived tiles for 15 January 2023 into a temporary
+directory and writes
+[`results/modscag_merra_grid_diagnostic_2023-01-15.png`](results/modscag_merra_grid_diagnostic_2023-01-15.png).
 
-## Run for about 30 minutes and resume later
+### Metrics
 
-Run this command from the project directory:
+Let `M` be MERRA-2 fSCA, `R` be MODSCAG fSCA aggregated to the MERRA-2 cell,
+and `w` be the valid MODSCAG pixel count. The pooled metrics are:
+
+```text
+bias = Σw(M - R) / Σw
+MAE  = Σw|M - R| / Σw
+NMB  = 100 × Σw(M - R) / ΣwR
+NMAE = 100 × Σw|M - R| / ΣwR
+```
+
+Bias and MAE are reported in fSCA percentage points. NMB and NMAE are reported
+as percentages of the paired MODSCAG snow signal. Weighting by valid 500 m
+pixel count preserves fine-pixel area weighting across cells and dates.
+
+## Installation and authentication
+
+Python 3.12 is the tested environment; Python 3.11 or newer is supported.
 
 ```bash
-/Users/clintonalden/miniconda3/envs/env1/bin/python -m merra_modis_comparison \
+python -m pip install -e '.[test]'
+```
+
+NASA Earthdata authentication is required for MERRA-2. Configure either a
+standard `~/.netrc` entry or the `EARTHDATA_TOKEN` environment variable. The
+pipeline never accepts credentials as command-line arguments and never writes
+them to results. The MODSCAG FTP archive is public.
+
+The included `.zsh` launchers currently point to the local tested interpreter:
+`/Users/clintonalden/miniconda3/envs/env1/bin/python`. Replace that path with the
+Python executable for another environment if needed.
+
+## Run the comparison
+
+### Preflight
+
+Validate authentication, product access, coordinates, timing, and variables:
+
+```bash
+python -m merra_modis_comparison \
+  --start-water-year 2010 --end-water-year 2023 \
+  --preflight-only
+```
+
+### Run to completion
+
+```bash
+./run_to_completion.zsh
+```
+
+Equivalent command:
+
+```bash
+python -m merra_modis_comparison \
   --start-water-year 2010 --end-water-year 2023 \
   --west -109 --east -104 --south 37 --north 41 \
-  --workers 16 \
-  --ftp-connections 8 \
-  --max-runtime-minutes 30
+  --workers 16 --ftp-connections 8
 ```
 
-The equivalent repeatable launcher is:
+### Run for about 30 minutes and resume
 
 ```bash
 ./run_30min.zsh
 ```
 
-The 30-minute limit stops submission of new calendar months. Months already in
-flight finish and save their atomic checkpoints, so the command can run a few
-minutes longer than the requested limit. Wait for the `paused cleanly` message,
-then it is safe to shut down the computer. Run the exact same command tomorrow;
-validated months are skipped automatically.
+The runtime limit stops scheduling new months but lets in-flight months finish
+and save atomic checkpoints. Wait for the `paused cleanly` message before
+shutting down. Re-running the same command validates and skips completed months.
 
-Every calendar month is one recoverable task. A successful monthly checkpoint
-contains mergeable comparison statistics and bias/MAE for the domain and all
-72 MERRA cells. A checkpoint is accepted on resume only if its schema,
-scientific configuration, cell identities, counts, metrics, and domain-from-cell
-reconstruction all validate. An interrupted temporary file is never mistaken
-for a completed month.
+Each calendar month is an independent recoverable task. A checkpoint is reused
+only after its schema, scientific configuration, cell identities, counts,
+metrics, and domain-from-cell reconstruction pass validation. Interrupted
+temporary files are never treated as completed months. Failed months are moved
+to the back of the queue for another attempt.
 
-The 16 processes share an eight-slot MODSCAG FTP gate. The archive rejects ten
-or more simultaneous connections from one IP, so this keeps MERRA requests and
-local reductions parallel without overrunning the remote service. Connection-
-limit responses receive a longer staggered backoff, and a failed month is moved
-to the back of the work queue before its second attempt.
+The 16 processes share an eight-slot MODSCAG FTP gate because the archive rejects
+ten or more simultaneous connections from one IP. Connection-limit responses
+receive a staggered backoff.
 
-Downloaded MODSCAG granules and MERRA subsets are not cached. They remain in a
-worker's temporary directory only while that day is being processed and are
-deleted immediately. The persistent artifacts are:
+## Derived analyses
 
-- 168 monthly comparison-statistics CSV checkpoints under
-  `results/water_year_2010_2023_monthly_checkpoints/`
-- `results/water_year_2010_2023_overall_stats.csv`
-- `results/water_year_2010_2023_pixel_stats.csv`
-- `results/water_year_2010_2023_bias_mae.png`
+### November 2022–May 2023 spatial and elevation dependence
 
-## MODSCAG regridding diagnostic
+```bash
+./plot_nov2022_may2023_spatial.zsh
+```
 
-`plot_one_day_regridding.zsh` downloads the three archived MODSCAG tiles for
-15 January 2023 into a temporary directory and writes
-`results/modscag_merra_grid_diagnostic_2023-01-15.png`. The figure shows the
-native 500 m sinusoidal pixels, a one-cell zoom, and the arithmetic pixel-center
-mean on the 0.625° × 0.5° MERRA-2 grid after the normal 80% support mask. The
-downloaded granules are deleted when plotting finishes.
+This validates seven monthly checkpoints and writes:
 
-The three aggregate artifacts are written atomically only after all 168 months
-have passed validation. Existing complete checkpoints can also rebuild them
-without contacting Earthdata.
+- `results/nov2022_may2023_spatial_bias_mae.png`
+- `results/nov2022_may2023_elevation_dependency.png`
+
+The spatial figure uses subtle USGS 3DEP hillshade and labeled 2,000 and 3,000 m
+contours. Refresh the included 100 × 90 EPSG:4326 DEM with
+`./download_coarse_dem.zsh`.
+
+### Wet- and dry-year composites
+
+```bash
+./plot_wet_dry_composites.zsh
+```
+
+The launcher builds or resumes 56 monthly MODSCAG-only statistic checkpoints,
+then combines comparison and MODSCAG statistics into November–May composites.
+It writes:
+
+- `results/wet_dry_composite_spatial_bias_mae.png`
+- `results/wet_dry_composite_elevation_dependency.png`
+
+The spatial figure contains MODIS fSCA, normalized mean bias, and normalized MAE
+for every month and year group. The elevation figure shows the dependence of the
+same quantities on cell-mean elevation. Composite normalized metrics are masked
+where MODIS fSCA is below 5%.
+
+### Wet/dry cellwise normalized-bias tests
+
+```bash
+./plot_bias_significance.zsh
+```
+
+For each wet/dry group, month, and MERRA-2 cell, the test uses the four annual
+NMB values as independent replicates. It is a two-sided one-sample t-test of
+mean annual NMB against zero, with three degrees of freedom when all four years
+are available.
+
+- Color: pooled normalized mean bias,
+  `100 × Σw(MERRA-2 - MODSCAG) / Σw(MODSCAG)`.
+- Hatching: raw, uncorrected two-sided `p < 0.05`.
+- Black: pooled group-month MODIS fSCA below 0.10.
+- No FDR or other multiple-testing correction is applied.
+
+Outputs:
+
+- `results/wet_dry_pixel_normalized_bias_two_sided_ttest.png`
+- `results/wet_dry_pixel_normalized_bias_two_sided_ttest.csv`
+
+The CSV retains the plotted NMB, mean annual NMB, pooled MODIS fSCA, mask,
+t statistic, raw p value, raw significance decision, sample size, and degrees
+of freedom for each cell.
+
+## Output inventory
+
+| Output | Contents |
+| --- | --- |
+| `results/water_year_2010_2023_monthly_checkpoints/` | 168 resumable monthly comparison-statistic CSVs |
+| `results/water_year_2010_2023_overall_stats.csv` | Domain-wide monthly, seasonal, and water-year summaries |
+| `results/water_year_2010_2023_pixel_stats.csv` | Monthly and seasonal results for all 72 MERRA-2 cells |
+| `results/water_year_2010_2023_bias_mae.png` | Multi-year bias and MAE summary |
+| `results/wet_dry_modis_fsca_monthly_checkpoints/` | MODSCAG-only sufficient statistics used by composites |
+| `results/wet_dry_composite_spatial_bias_mae.png` | Wet/dry monthly spatial composites |
+| `results/wet_dry_composite_elevation_dependency.png` | Wet/dry elevation dependence |
+| `results/wet_dry_pixel_normalized_bias_two_sided_ttest.*` | Cellwise NMB map, raw p values, and decisions |
+| `results/modscag_merra_grid_diagnostic_2023-01-15.png` | Native-to-MERRA regridding diagnostic |
+
+Daily MODSCAG granules and MERRA-2 subsets are never cached. Final CSVs and
+figures are written atomically only after all required checkpoints pass
+validation; existing checkpoints can rebuild final products without repeating
+the full data download.
 
 ## Verification
 
 ```bash
-/Users/clintonalden/miniconda3/envs/env1/bin/python -m pytest -q
-/Users/clintonalden/miniconda3/envs/env1/bin/python -m merra_modis_comparison \
-  --start-water-year 2010 --end-water-year 2023 --preflight-only
+python -m pytest -q
 ```
 
-## November 2022–May 2023 spatial figure
+The current suite contains 33 tests covering configuration, regridding,
+statistics, checkpoint validation, plotting, composites, and significance
+calculations.
 
-`plot_nov2022_may2023_spatial.zsh` validates the seven monthly cell-stat
-checkpoints concurrently and writes both the 14-panel bias/MAE map and a
-two-panel elevation-dependence figure. The included coarse GeoTIFF is a 100 ×
-90 EPSG:4326 subset of the USGS 3DEP bare-earth DEM. Subtle hillshade is shown
-beneath the mostly opaque metric cells, with labeled 2000 and 3000 m contours.
-Refresh the DEM with
-`download_coarse_dem.zsh` if needed.
+## Research-plan-implement record
 
-## Wet- and dry-year composite figures
-
-`plot_wet_dry_composites.zsh` loads and validates the 56 November–May monthly
-comparison checkpoints with 16 threads. It also builds a separate resumable set
-of monthly MODIS fSCA statistics; downloaded daily granules are deleted
-immediately and only the aggregate statistics persist. It combines sufficient
-statistics before deriving the metrics, so the composites remain weighted by
-valid MODSCAG pixel-days.
-The wet composite uses water years 2011, 2017, 2019, and 2023; the dry composite
-uses water years 2012, 2013, 2015, and 2018. It writes a shared-scale 7 × 6
-spatial comparison and a shared-axis 2 × 3 elevation-dependence comparison,
-including standalone MODIS fSCA, normalized mean bias, and normalized MAE.
-Normalized metrics use the paired MODIS snow signal as their denominator and
-are masked wherever the corresponding composite MODIS fSCA is below 5%.
-
-## Wet/dry cellwise normalized-bias t-test
-
-`plot_bias_significance.zsh` creates 14 November–May panels: wet WY2011, 2017,
-2019, and 2023 beside dry WY2012, 2013, 2015, and 2018. Color represents pooled
-normalized mean bias, `100 * sum_w_error / sum_w_modis_fsca`, on one shared
-red/blue scale. Solid black cells have pooled group-month MODIS fSCA below 0.10.
-For each non-masked cell, the two-sided one-sample t-test uses the four annual
-NMB values as replicates, giving three degrees of freedom where all four years
-are available. Hatching marks the uncorrected two-sided `p < 0.05` decision;
-no multiple-testing or FDR correction is applied. Panel annotations report the
-number of raw significant results among unmasked cells. The companion CSV
-retains pooled NMB and MODIS fSCA, the mean annual NMB, masking status, t
-statistic, raw p value and decision, sample size, and degrees of freedom.
+- [`research/FSCA_PRODUCT_NOTES.md`](research/FSCA_PRODUCT_NOTES.md)
+- [`plan/FSCA_PIPELINE_PLAN.md`](plan/FSCA_PIPELINE_PLAN.md)
+- [`plan/MULTIYEAR_2010_2023_PLAN.md`](plan/MULTIYEAR_2010_2023_PLAN.md)
