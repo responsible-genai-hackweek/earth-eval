@@ -98,7 +98,7 @@ def _titles(ax, title: str, offset: float = 0.0) -> None:
     caption, where they can be edited without re-rendering. ``offset`` lifts it
     clear of a panel label in a multi-panel figure.
     """
-    ax.text(0.5, 1.08 + offset, title, transform=ax.transAxes, color=INK,
+    ax.text(0.5, 1.13 + offset, title, transform=ax.transAxes, color=INK,
             fontsize=15, fontweight="bold", va="top", ha="center")
 
 
@@ -117,6 +117,7 @@ def save(fig, path: Path) -> Path:
             tmp,
             dpi=170 if suffix == ".png" else None,
             bbox_inches="tight",
+            pad_inches=0.45,
             facecolor=SURFACE,
         )
         tmp.replace(target)
@@ -143,7 +144,7 @@ def anomaly_bars(
     spread = float(np.nanstd(values))
     ranks = rank_ascending(values)
 
-    fig, ax = plt.subplots(figsize=(11, 4.6))
+    fig, ax = plt.subplots(figsize=(11.5, 5.0))
     _style(ax)
 
     colours = []
@@ -271,7 +272,7 @@ def spaghetti(
     The ensemble mean is the one black line: the reference every other curve is
     read against.
     """
-    fig, ax = plt.subplots(figsize=(11, 5))
+    fig, ax = plt.subplots(figsize=(11.5, 5.4))
     _style(ax)
     _draw_spaghetti(ax, series, water_years, low, high)
     _month_axis(ax)
@@ -310,7 +311,7 @@ def spaghetti_bands(
     of snow, and that difference is part of what the figure shows.
     """
     fig, axes = plt.subplots(
-        len(panels), 1, figsize=(11, 4.1 * len(panels)), sharex=True, sharey=True
+        len(panels), 1, figsize=(11.5, 4.5 * len(panels)), sharex=True, sharey=True
     )
     axes = np.atleast_1d(axes)
     for index, (ax, (label, series, low, high)) in enumerate(zip(axes, panels)):
@@ -319,7 +320,7 @@ def spaghetti_bands(
         ax.set_ylabel(unit, color=INK)
         # The band sits above its panel, where a panel label belongs, rather
         # than floating inside the data area.
-        ax.text(0.0, 1.02, label, transform=ax.transAxes, ha="left", va="bottom",
+        ax.text(0.0, 1.03, label, transform=ax.transAxes, ha="left", va="bottom",
                 fontsize=12, color=INK, fontweight="bold")
         if index == 0:
             _titles(ax, title, offset=0.055)
@@ -336,7 +337,7 @@ def spaghetti_bands(
     )
     for ax in axes:
         ax.set_ylim(0, top * 1.06)
-    fig.subplots_adjust(hspace=0.12)
+    fig.subplots_adjust(hspace=0.20)
     return save(fig, path)
 
 
@@ -410,7 +411,7 @@ def validation_series(
     reference is not interpolated across, since the whole point of the panel is
     to show where the models and the observation part company.
     """
-    fig, ax = plt.subplots(figsize=(10.5, 4.6))
+    fig, ax = plt.subplots(figsize=(11.5, 5.0))
     _style(ax)
 
     x = np.array([_water_day(d, wy) for d in days])

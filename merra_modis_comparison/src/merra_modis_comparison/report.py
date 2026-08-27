@@ -129,7 +129,7 @@ def build_report(
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             mm_to_in(np.array([s.april_first_swe_mm for s in stats["era5"]])),
-            title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
+            title=r"Colorado Rocky Mountains   April 1$^{\mathrm{st}}$ Snow Water Equivalent   ERA5   (1981–2026)",
             unit="Snow Water Equivalent (in)",
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
@@ -138,7 +138,7 @@ def build_report(
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             m_to_in(np.array([s.april_first_depth_m for s in stats["era5"]])),
-            title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
+            title=r"Colorado Rocky Mountains   April 1$^{\mathrm{st}}$ Snow Depth   ERA5   (1981–2026)",
             unit="Snow Depth (in)",
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
@@ -166,8 +166,8 @@ def build_report(
             summary[f"outliers_{name}"] = {"low": low, "high": high}
             summary["figures"].append(str(spaghetti(
                 data, era5_years, low=low, high=high,
-                title=f"Colorado Rocky Mountains: {label}, ERA5 "
-                      f"({min(era5_years)}\u2013{max(era5_years)})",
+                title=f"Colorado Rocky Mountains   {label}   ERA5"
+                      f"   ({min(era5_years)}\u2013{max(era5_years)})",
                 unit=unit,
                 path=results / name,
             )))
@@ -181,7 +181,8 @@ def build_report(
             ]
             summary["figures"].append(str(spaghetti_bands(
                 bands, era5_years,
-                title=f"Colorado Rocky Mountains: {label}, ERA5",
+                title=f"Colorado Rocky Mountains   {label}   ERA5"
+                      f"   ({min(era5_years)}\u2013{max(era5_years)})",
                 unit=unit,
                 path=results / name.replace("spaghetti_", "bands_"),
             )))
@@ -527,7 +528,7 @@ def _validation_figure(checkpoints: Path, results: Path) -> str | None:
         return None
     return str(validation_series(
         days, series, wy=2023,
-        title="Colorado Rocky Mountains: Satellite Validation, Water Year 2023",
+        title="Colorado Rocky Mountains   Satellite Validation   Water Year 2023",
         path=results / "wy2023_validation_fsca.png",
     ))
 
