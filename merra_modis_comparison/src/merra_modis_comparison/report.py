@@ -118,31 +118,32 @@ def build_report(
     era5_years = [s.water_year for s in stats["era5"]]
     summary: dict = {"water_years": era5_years, "figures": []}
 
-    if era5_years:
-        from .grid import build_target_grid
-
-        grid = build_target_grid()
-        grid_lat, grid_lon = grid.lat_centers, grid.lon_centers
-        swe = _converted(load_swe_series(checkpoints, "era5", era5_years), mm_to_in)
-        depth = _converted(load_depth_series(checkpoints, "era5", era5_years), m_to_in)
+    for model, model_name in (("era5", "ERA5"), ("merra2", "MERRA-2")):
+        model_years = [s.water_year for s in stats[model]]
+        if not model_years:
+            continue
+        swe = _converted(load_swe_series(checkpoints, model, model_years), mm_to_in)
+        depth = _converted(load_depth_series(checkpoints, model, model_years), m_to_in)
         span = f"WY{min(era5_years)}–WY{max(era5_years)}"
 
         summary["figures"].append(str(anomaly_bars(
-            era5_years,
-            mm_to_in(np.array([s.april_first_swe_mm for s in stats["era5"]])),
-            title=r"Colorado Rocky Mountains   April 1$^{\mathrm{st}}$ Snow Water Equivalent   ERA5   (1981–2026)",
-            unit="Snow Water Equivalent (in)",
+            model_years,
+            mm_to_in(np.array([s.april_first_swe_mm for s in stats[model]])),
+            title="Colorado Rocky Mountains   April 1$^{\\mathrm{st}}$   "
+                  f"{model_name}   {min(model_years)}\u2013{max(model_years)}",
+            unit="Snow Water Equivalent   Inches",
             highlight=feature_years,
-            path=results / "april_first_swe_by_water_year.png",
+            path=results / f"april_first_swe_{model}.png",
         )))
 
         summary["figures"].append(str(anomaly_bars(
-            era5_years,
-            m_to_in(np.array([s.april_first_depth_m for s in stats["era5"]])),
-            title=r"Colorado Rocky Mountains   April 1$^{\mathrm{st}}$ Snow Depth   ERA5   (1981–2026)",
-            unit="Snow Depth (in)",
+            model_years,
+            m_to_in(np.array([s.april_first_depth_m for s in stats[model]])),
+            title="Colorado Rocky Mountains   April 1$^{\\mathrm{st}}$   "
+                  f"{model_name}   {min(model_years)}\u2013{max(model_years)}",
+            unit="Snow Depth   Inches",
             highlight=feature_years,
-            path=results / "april_first_depth_by_water_year.png",
+            path=results / f"april_first_depth_{model}.png",
         )))
 
         # Every year as its own line, rather than a percentile band. A band is
@@ -151,13 +152,13 @@ def build_report(
         # result.
         for field, label, unit, data, name, (field_prefix, convert) in (
             ("peak_swe_mm", "Snow Water Equivalent",
-             "Snow Water Equivalent (in)", swe, "spaghetti_swe.png",
+             "Snow Water Equivalent   Inches", swe, f"spaghetti_swe_{model}.png",
              ("swe_mm", mm_to_in)),
             ("april_first_depth_m", "Snow Depth",
-             "Snow Depth (in)", depth, "spaghetti_depth.png",
+             "Snow Depth   Inches", depth, f"spaghetti_depth_{model}.png",
              ("depth_m", m_to_in)),
         ):
-            ordered = ranked(stats["era5"], field)
+            ordered = ranked(stats[model], field)
             by_rank = sorted(
                 (wy for wy in ordered if np.isfinite(ordered[wy][1])),
                 key=lambda wy: ordered[wy][1],
@@ -166,9 +167,9 @@ def build_report(
             high = tuple(reversed(by_rank[-N_OUTLIERS:]))
             summary[f"outliers_{name}"] = {"low": low, "high": high}
             summary["figures"].append(str(spaghetti(
-                data, era5_years, low=low, high=high,
-                title=f"Colorado Rocky Mountains   {label}   ERA5"
-                      f"   ({min(era5_years)}\u2013{max(era5_years)})",
+                data, model_years, low=low, high=high,
+                title=f"Colorado Rocky Mountains   {model_name}"
+                      f"   {min(model_years)}\u2013{max(model_years)}",
                 unit=unit,
                 path=results / name,
             )))
@@ -176,7 +177,7 @@ def build_report(
             bands = [
                 (band_label,
                  _converted(load_band_series(
-                     checkpoints, "era5", era5_years, field_prefix, key), convert),
+                     checkpoints, model, model_years, field_prefix, key), convert),
                  low, high)
                 # Reversed for display: elevation increases upward on the page,
                 # so the high band is the top panel. The stored column order is
@@ -184,9 +185,9 @@ def build_report(
                 for key, band_label, _, _ in reversed(BANDS)
             ]
             summary["figures"].append(str(spaghetti_bands(
-                bands, era5_years,
-                title=f"Colorado Rocky Mountains   {label}   ERA5"
-                      f"   ({min(era5_years)}\u2013{max(era5_years)})",
+                bands, model_years,
+                title=f"Colorado Rocky Mountains   {model_name}"
+                      f"   {min(model_years)}\u2013{max(model_years)}",
                 unit=unit,
                 path=results / name.replace("spaghetti_", "bands_"),
             )))
@@ -651,7 +652,7 @@ def _validation_figure(checkpoints: Path, results: Path) -> str | None:
         return None
     return str(validation_series(
         days, series, wy=2023,
-        title="Colorado Rocky Mountains   Satellite Validation   Water Year 2023",
+        title="Colorado Rocky Mountains   Satellite Validation   2023",
         path=results / "wy2023_validation_fsca.png",
     ))
 

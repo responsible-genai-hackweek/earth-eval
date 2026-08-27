@@ -182,7 +182,6 @@ def anomaly_bars(
             textcoords="offset points", ha="center", fontsize=10.5, color=INK,
         )
 
-    ax.set_xlabel("Water Year", color=INK)
     ax.set_ylabel(unit, color=INK)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
     _titles(ax, title)
