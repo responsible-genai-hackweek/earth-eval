@@ -151,11 +151,15 @@ def build_report(
         # computed per day-of-year and traces a path no real year followed; each
         # curve here actually happened, and the shape of a year is part of the
         # result.
+        # Trajectory figures rank by the SEASON MEAN, which summarises the whole
+        # curve. Peak and April 1st are single points: a year highlighted for a
+        # one-day value need not look extreme anywhere the eye lands, and the two
+        # panels then disagree about which years are the outliers.
         for field, label, unit, data, name, (field_prefix, convert) in (
-            ("peak_swe_mm", "Snow Water Equivalent",
+            ("season_mean_swe_mm", "Snow Water Equivalent",
              "Snow Water Equivalent   Inches", swe, f"spaghetti_swe_{model}.png",
              ("swe_mm", mm_to_in)),
-            ("april_first_depth_m", "Snow Depth",
+            ("season_mean_depth_m", "Snow Depth",
              "Snow Depth   Inches", depth, f"spaghetti_depth_{model}.png",
              ("depth_m", m_to_in)),
         ):

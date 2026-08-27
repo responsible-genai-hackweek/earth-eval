@@ -49,6 +49,7 @@ class WaterYearStats:
     april_first_swe_mm: float
     april_first_depth_m: float
     season_mean_swe_mm: float
+    season_mean_depth_m: float
     melt_out: date | None
     n_days: int
 
@@ -151,6 +152,9 @@ def summarize_model(
                 april_first_depth_m=april_first(year_depth, wy),
                 season_mean_swe_mm=mean_over(
                     year_swe, date(wy - 1, 10, 1), date(wy, 6, 30)
+                ),
+                season_mean_depth_m=mean_over(
+                    year_depth, date(wy - 1, 10, 1), date(wy, 6, 30)
                 ),
                 melt_out=melt_out_date(year_swe, MELT_OUT_THRESHOLD_MM),
                 n_days=len(year_swe),
