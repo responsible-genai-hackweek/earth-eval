@@ -24,8 +24,8 @@ CHECKPOINTS = RESULTS / "daily_domain_means"
 #: lags real time by about four weeks.
 MERRA2_LAST_DATE = date(2026, 8, 1)
 
-ERA5_COLUMNS = ("date", "stream", "swe_mm_we", "snow_density_kg_m3")
-MERRA2_COLUMNS = ("date", "frsno", "snodp_m", "snomas_kg_m2")
+ERA5_COLUMNS = ("date", "stream", "swe_mm_we", "snow_density_kg_m3", "depth_m", "fsca")
+MERRA2_COLUMNS = ("date", "frsno", "snodp_m", "snomas_kg_m2", "depth_m")
 
 
 def checkpoint_path(model: str, wy: int) -> Path:
@@ -61,12 +61,16 @@ def build_era5_year(wy: int, with_density: bool, workers: int = 24) -> None:
     variables = ("snow_depth", "snow_density") if with_density else ("snow_depth",)
     got = era5_daily_means(days, variables=variables, hours=(12,), workers=workers)
     density = got.get("snow_density")
+    depth = got.get("depth_m")
+    fsca = got.get("fsca")
     rows = [
         [
             d.isoformat(),
             got["_stream"][i],
             f"{got['snow_depth'][i] * 1000.0:.6f}",
             f"{density[i]:.4f}" if density is not None else "",
+            f"{depth[i]:.8f}" if depth is not None else "",
+            f"{fsca[i]:.8f}" if fsca is not None else "",
         ]
         for i, d in enumerate(got["_days"])
     ]
@@ -87,6 +91,7 @@ def build_merra2_year(wy: int, workers: int = 16) -> None:
             f"{got['FRSNO'][i]:.8f}",
             f"{got['SNODP'][i]:.8f}",
             f"{got['SNOMAS'][i]:.6f}",
+            f"{got['depth_m'][i]:.8f}",
         ]
         for i, d in enumerate(got["_days"])
     ]

@@ -24,16 +24,19 @@ def write_year(tmp_path, model, wy, swe_profile, density=250.0, frsno=0.5):
     rows = []
     for i, swe in enumerate(swe_profile):
         day = (start + timedelta(days=i)).isoformat()
+        depth = swe / density  # metres, as the pipeline computes it per cell
         if model == "era5":
-            rows.append([day, "final", f"{swe:.6f}", f"{density:.4f}"])
+            rows.append([day, "final", f"{swe:.6f}", f"{density:.4f}",
+                         f"{depth:.8f}", "0.5"])
         else:
             # SNOMAS is a grid mean; SNODP is in-pack depth
             snodp = (swe / density) / frsno if frsno else 0.0
-            rows.append([day, f"{frsno:.8f}", f"{snodp:.8f}", f"{swe:.6f}"])
+            rows.append([day, f"{frsno:.8f}", f"{snodp:.8f}", f"{swe:.6f}",
+                         f"{depth:.8f}"])
     header = (
-        ["date", "stream", "swe_mm_we", "snow_density_kg_m3"]
+        ["date", "stream", "swe_mm_we", "snow_density_kg_m3", "depth_m", "fsca"]
         if model == "era5"
-        else ["date", "frsno", "snodp_m", "snomas_kg_m2"]
+        else ["date", "frsno", "snodp_m", "snomas_kg_m2", "depth_m"]
     )
     path = tmp_path / f"{model}_WY{wy}.csv"
     with path.open("w", newline="") as handle:
@@ -90,6 +93,44 @@ class TestDepthConversion:
         a = load_depth_series(tmp_path, "era5", [2020])
         b = load_depth_series(tmp_path, "merra2", [2020])
         assert a.values[0] == pytest.approx(b.values[0])
+
+
+class TestDepthIsNotRederivedFromDomainMeans:
+    """The mean of a ratio is not the ratio of means.
+
+    Depth must be computed per cell and then averaged. Re-deriving it from
+    already-averaged SWE and density understates or overstates it - on real
+    dry-year fields by about a factor of two, because low water equivalent and
+    low density coincide in space.
+    """
+
+    def test_the_stored_column_is_used_verbatim(self, tmp_path):
+        path = write_year(tmp_path, "era5", 2020, [50.0], density=250.0)
+        text = path.read_text().replace("0.20000000", "0.09700000")
+        path.write_text(text)
+        depth = load_depth_series(tmp_path, "era5", [2020])
+        assert depth.values[0] == pytest.approx(0.097), (
+            "depth must come from the stored per-cell average, not be recomputed "
+            "from the domain-mean SWE and density"
+        )
+
+    def test_a_missing_depth_column_is_null_not_guessed(self, tmp_path):
+        path = write_year(tmp_path, "merra2", 2020, [50.0], density=250.0, frsno=0.4)
+        lines = path.read_text().splitlines()
+        trimmed = [",".join(line.split(",")[:-1]) for line in lines]
+        path.write_text("\n".join(trimmed) + "\n")
+        depth = load_depth_series(tmp_path, "merra2", [2020])
+        assert np.isnan(depth.values[0])
+
+    def test_the_two_orderings_actually_differ(self):
+        """Guard against the fix being reverted as a no-op."""
+        from merra_modis_comparison.snowvars import geometric_depth_m
+
+        swe = np.array([1.0, 1.0, 200.0])
+        rho = np.array([120.0, 120.0, 400.0])
+        mean_of_ratio = float(np.mean(geometric_depth_m(swe, rho)))
+        ratio_of_means = float(geometric_depth_m(swe.mean(), rho.mean()))
+        assert abs(mean_of_ratio - ratio_of_means) / mean_of_ratio > 0.10
 
 
 class TestSummary:

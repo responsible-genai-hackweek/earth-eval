@@ -21,7 +21,7 @@ from .summarize import (
     summarize_model,
 )
 
-__all__ = ["build_report"]
+__all__ = ["build_report", "write_findings"]
 
 FIELDS = (
     ("april_first_swe_mm", "1 April SWE", "mm w.e."),
@@ -162,6 +162,90 @@ def build_report(
                     "anomaly_sd": anomaly, "unit": unit, "label": label,
                 }
     return summary
+
+
+def write_findings(checkpoints: Path, results: Path, water_years: list[int],
+                   feature_years: tuple[int, ...] = (2023, 2026)) -> Path:
+    """Write the headline numbers as markdown, generated rather than transcribed.
+
+    Every figure quoted in prose should come from here, so a number cannot drift
+    from the data it claims to describe.
+    """
+    stats = {
+        model: [s for s in summarize_model(checkpoints, model, water_years)
+                if s.n_days >= 270]
+        for model in ("era5", "merra2")
+    }
+    era5_years = [s.water_year for s in stats["era5"]]
+    lines: list[str] = [
+        "# Findings",
+        "",
+        "Generated from the daily checkpoints. Do not edit by hand.",
+        "",
+        f"Record: WY{min(era5_years)}-WY{max(era5_years)} "
+        f"({len(era5_years)} complete water years), 72 MERRA-2 cells over Colorado.",
+        "",
+    ]
+
+    for model, entries in stats.items():
+        if not entries:
+            continue
+        label = "ERA5" if model == "era5" else "MERRA-2"
+        lines += [f"## {label}", ""]
+        for field, name, unit in FIELDS:
+            if model == "merra2" and field == "april_first_swe_mm":
+                lines += [
+                    f"- **{name}** — omitted deliberately. MERRA-2 melts this "
+                    "domain out almost entirely by April in most years, so the "
+                    "ranking within that band is noise rather than a result.",
+                ]
+                continue
+            table = ranked(entries, field)
+            n = len(table)
+            for wy in feature_years:
+                if wy not in table:
+                    continue
+                value, rank, anomaly = table[wy]
+                if not np.isfinite(value):
+                    continue
+                end = "lowest" if rank <= n / 2 else "highest"
+                shown = int(rank if rank <= n / 2 else n - rank + 1)
+                phrase = f"{end} of {n}" if shown == 1 else f"{shown}{'st' if shown == 1 else 'nd' if shown == 2 else 'rd' if shown == 3 else 'th'} {end} of {n}"
+                mean = float(np.nanmean([getattr(s, field) for s in entries]))
+                pct = 100.0 * value / mean if mean else float("nan")
+                lines.append(
+                    f"- **{name}, WY{wy}**: {value:.4g} {unit} — {phrase}, "
+                    f"{pct:.0f}% of the record mean ({anomaly:+.2f} sd)."
+                )
+        lines.append("")
+
+    shared = sorted({s.water_year for s in stats["era5"]}
+                    & {s.water_year for s in stats["merra2"]})
+    if len(shared) >= 3:
+        lines += ["## Do the two reanalyses agree?", ""]
+        for field, name, _ in FIELDS:
+            if field == "april_first_swe_mm":
+                continue
+            rho, pv, n = model_agreement(
+                [s for s in stats["era5"] if s.water_year in shared],
+                [s for s in stats["merra2"] if s.water_year in shared],
+                field,
+            )
+            if np.isfinite(rho):
+                shown_p = "< 1e-16" if pv == 0 else f"= {pv:.1e}"
+                lines.append(f"- **{name}** rank correlation: rho = {rho:.3f}, p {shown_p}, n = {n}")
+        lines += [
+            "",
+            "Rank, not magnitude. The two models' magnitude ratio varies with how "
+            "thin the snowpack is, so a ratio quoted without naming the product is "
+            "not a fact about Colorado.",
+            "",
+        ]
+
+    path = results / "FINDINGS.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+    return path
 
 
 def _rank(table, wy) -> str:

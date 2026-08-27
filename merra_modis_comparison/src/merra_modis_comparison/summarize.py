@@ -25,7 +25,6 @@ from .snowseason import (
     spearman_rho,
     standardized_anomaly,
 )
-from .snowvars import geometric_depth_m, grid_mean_depth_m
 
 __all__ = [
     "WaterYearStats",
@@ -92,17 +91,11 @@ def load_depth_series(checkpoints: Path, model: str, water_years) -> DailySeries
             continue
         for row in _read(path):
             days.append(date.fromisoformat(row["date"]))
-            if model == "era5":
-                density = row.get("snow_density_kg_m3") or ""
-                values.append(
-                    geometric_depth_m(float(row["swe_mm_we"]), float(density))
-                    if density
-                    else float("nan")
-                )
-            else:
-                values.append(
-                    float(grid_mean_depth_m(float(row["frsno"]), float(row["snodp_m"])))
-                )
+            # Read the stored per-cell-then-averaged depth. Recomputing it here
+            # from the domain means would be a ratio of means, not the mean of
+            # the ratio, and is wrong by about a factor of two in a dry year.
+            stored = row.get("depth_m") or ""
+            values.append(float(stored) if stored else float("nan"))
     order = np.argsort(days)
     return DailySeries(
         dates=tuple(np.array(days, dtype=object)[order]),

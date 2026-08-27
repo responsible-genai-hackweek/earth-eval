@@ -24,7 +24,13 @@ import numpy as np
 
 from .calendars import enumerate_dates
 from .regrid import domain_area_weights
-from .snowvars import mask_merra2_fill
+from .snowvars import (
+    era5_snow_cover,
+    geometric_depth_m,
+    grid_mean_depth_m,
+    mask_merra2_fill,
+    swe_from_water_equivalent_m,
+)
 from .sources import era5 as era5_src
 from .sources import merra2 as merra2_src
 
@@ -110,17 +116,30 @@ def era5_daily_means(
 
     def one_day(day: date) -> tuple[date, dict[str, float], str]:
         base, _ = era5_src.hour_index_range(day, ERA5_EPOCH)
-        out: dict[str, float] = {}
+        fields: dict[str, np.ndarray] = {}
         for name, array in arrays.items():
-            samples = []
-            for hour in hours:
-                block = np.asarray(
+            samples = [
+                np.asarray(
                     array.isel(time=base + hour, latitude=lat_sl, longitude=lon_sl).values,
                     dtype=float,
                 )
-                samples.append(block)
-            stacked = np.nanmean(np.stack(samples), axis=0)
-            out[name] = _weighted_mean(stacked, weights)
+                for hour in hours
+            ]
+            fields[name] = np.nanmean(np.stack(samples), axis=0)
+
+        out = {name: _weighted_mean(block, weights) for name, block in fields.items()}
+
+        # Derived quantities are computed PER CELL and then averaged. Deriving
+        # them from domain means instead would take a ratio of means, which is
+        # not the mean of the ratio - on real dry-year fields that is a factor
+        # of two, because low water equivalent and low density coincide in space.
+        if "snow_depth" in fields and "snow_density" in fields:
+            swe = swe_from_water_equivalent_m(fields["snow_depth"])
+            depth = geometric_depth_m(swe, fields["snow_density"])
+            out["depth_m"] = _weighted_mean(depth, weights)
+            out["fsca"] = _weighted_mean(
+                era5_snow_cover(swe, fields["snow_density"]), weights
+            )
         return day, out, era5_src.classify_stream(day, final, era5t)
 
     results: dict[date, dict[str, float]] = {}
@@ -131,7 +150,8 @@ def era5_daily_means(
             streams[day] = stream
 
     ordered = sorted(results)
-    out = {name: np.array([results[d][name] for d in ordered]) for name in variables}
+    names = sorted({k for values in results.values() for k in values})
+    out = {name: np.array([results[d].get(name, np.nan) for d in ordered]) for name in names}
     out["_days"] = np.array(ordered, dtype=object)
     out["_stream"] = np.array([streams[d] for d in ordered], dtype=object)
     return out
@@ -188,7 +208,7 @@ def merra2_daily_means(days: list[date], workers: int = 16) -> dict[str, np.ndar
             results[day] = values
 
     ordered = sorted(results)
-    names = merra2_src.SNOW_VARIABLES
+    names = sorted({k for values in results.values() for k in values})
     out = {name: np.array([results[d][name] for d in ordered]) for name in names}
     out["_days"] = np.array(ordered, dtype=object)
     return out
@@ -223,10 +243,13 @@ def _fetch_merra2_day(session, day: date, grid, weights) -> dict[str, float]:
             np.where(np.isnan(fields["FRSNO"]), 0.0, fields["FRSNO"]),
             lat, lon, day, str(units),
         )
-    return {
-        name: _weighted_mean(np.nanmean(block, axis=0), weights)
-        for name, block in fields.items()
-    }
+    daily = {name: np.nanmean(block, axis=0) for name, block in fields.items()}
+    out = {name: _weighted_mean(block, weights) for name, block in daily.items()}
+    # Per cell, then averaged - see the note in era5_daily_means.
+    out["depth_m"] = _weighted_mean(
+        grid_mean_depth_m(np.clip(daily["FRSNO"], 0.0, 1.0), daily["SNODP"]), weights
+    )
+    return out
 
 
 def _weighted_mean(values: np.ndarray, weights: np.ndarray) -> float:
