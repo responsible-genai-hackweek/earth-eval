@@ -16,6 +16,7 @@ from .figures import (
     DRY_COLOUR,
     WET_COLOUR,
     anomaly_bars,
+    collect_pdf,
     model_agreement_scatter,
     spaghetti,
     validation_series,
@@ -73,6 +74,11 @@ def build_report(
     complete_only: bool = True,
 ) -> dict:
     """Write the statistics table and every figure. Returns a summary dict."""
+    with collect_pdf(results / "colorado_snowpack_figures.pdf"):
+        return _build(checkpoints, results, water_years, feature_years, complete_only)
+
+
+def _build(checkpoints, results, water_years, feature_years, complete_only) -> dict:
     stats = {
         model: summarize_model(checkpoints, model, water_years)
         for model in ("era5", "merra2")

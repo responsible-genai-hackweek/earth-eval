@@ -12,6 +12,8 @@ are direct-labelled or legended, and the extreme years are annotated.
 
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
@@ -74,14 +76,49 @@ def _titles(ax, title: str, subtitle: str) -> None:
             color=INK_SECONDARY, fontsize=9.5, va="top", ha="left", linespacing=1.4)
 
 
-def save(fig, path: Path) -> Path:
-    """Write a figure atomically so a failed render cannot replace a good one."""
+#: When set, every saved figure is also appended to this multi-page document.
+_COLLECTOR = None
+
+
+@contextmanager
+def collect_pdf(path: Path):
+    """Collect every figure saved inside this block into one PDF document."""
+    global _COLLECTOR
+    from matplotlib.backends.backend_pdf import PdfPages
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp.png")
-    fig.savefig(tmp, dpi=170, bbox_inches="tight", facecolor=SURFACE)
-    plt.close(fig)
+    tmp = path.with_suffix(f".tmp{os.getpid()}.pdf")
+    with PdfPages(tmp) as pages:
+        _COLLECTOR = pages
+        try:
+            yield
+        finally:
+            _COLLECTOR = None
     tmp.replace(path)
-    return path
+
+
+def save(fig, path: Path) -> Path:
+    """Write a figure atomically, as both a raster and a vector document.
+
+    PDF is the better artefact for these plots: a spaghetti panel is dozens of
+    hairline strokes, and rasterising them loses exactly the thin lines the
+    figure is made of. The PNG stays for quick viewing.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for suffix in (".png", ".pdf"):
+        target = path.with_suffix(suffix)
+        tmp = target.with_suffix(f".tmp{os.getpid()}{suffix}")
+        fig.savefig(
+            tmp,
+            dpi=170 if suffix == ".png" else None,
+            bbox_inches="tight",
+            facecolor=SURFACE,
+        )
+        tmp.replace(target)
+    if _COLLECTOR is not None:
+        _COLLECTOR.savefig(fig, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    return path.with_suffix(".png")
 
 
 def anomaly_bars(

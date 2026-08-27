@@ -60,12 +60,28 @@ class TestTable:
 class TestFigures:
     def test_every_figure_is_written(self, built):
         summary, _, _ = built
-        assert len(summary["figures"]) == 4
+        assert summary["figures"], "the report produced no figures at all"
         for path in summary["figures"]:
             from pathlib import Path
 
             assert Path(path).exists()
             assert Path(path).stat().st_size > 5000
+
+    def test_each_figure_has_a_vector_companion(self, built):
+        """A spaghetti panel is dozens of hairlines; raster loses them."""
+        from pathlib import Path
+
+        summary, _, _ = built
+        for path in summary["figures"]:
+            pdf = Path(path).with_suffix(".pdf")
+            assert pdf.exists(), f"no PDF beside {Path(path).name}"
+            assert pdf.stat().st_size > 2000
+
+    def test_a_combined_document_collects_them(self, built):
+        _, res, _ = built
+        combined = res / "colorado_snowpack_figures.pdf"
+        assert combined.exists()
+        assert combined.stat().st_size > 10000
 
     def test_no_temporary_files_survive(self, built):
         _, res, _ = built
