@@ -58,8 +58,9 @@ sns.set_theme(
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
-    "anomaly_bars", "model_agreement_scatter", "model_comparison", "save",
-    "spaghetti", "spaghetti_bands", "validation_series",
+    "anomaly_bars", "beeswarm_offsets", "figure_title", "model_agreement_scatter",
+    "model_comparison", "panel_label", "quiet_legend", "save", "spaghetti",
+    "spaghetti_bands", "style_axes", "validation_series",
 ]
 
 # Model identity in the NASA palette: NASA blue for MERRA-2, NASA red for ERA5.
@@ -98,6 +99,67 @@ def _style(ax, *, grid_axis: str = "y") -> None:
     for side in ("left", "bottom"):
         ax.spines[side].set_color("#c9c9c3")
     ax.tick_params(colors=INK, labelsize=11, length=3, width=0.9)
+
+
+#: Public alias. Figures live in more than one module; importing a private name
+#: across modules makes the style contract accidental rather than declared.
+style_axes = _style
+
+
+def figure_title(fig, text: str, y: float = 1.02) -> None:
+    """Centre a title above a whole figure.
+
+    Title only: domain, subject and record period, separated by spaces rather
+    than colons. Everything else — the mask, the member count, what the panel
+    means — belongs in the caption, where it is editable without re-rendering.
+    """
+    fig.text(0.5, y, text, ha="center", va="top", color=INK,
+             fontsize=15, fontweight="bold")
+
+
+def panel_label(ax, text: str) -> None:
+    """Label one panel above its axes, left-aligned.
+
+    Above, never inside the data area, and left-aligned so it never competes
+    with the centred figure title. An identifier, plus at most a number the
+    marks cannot state themselves.
+    """
+    ax.text(0.0, 1.035, text, transform=ax.transAxes, ha="left", va="bottom",
+            color=INK, fontsize=12.5, fontweight="bold")
+
+
+def quiet_legend(ax, **kwargs):
+    """A key framed as a key, in the axis black rather than a lighter grey."""
+    legend = ax.legend(frameon=True, facecolor=SURFACE, edgecolor=GRID,
+                       framealpha=1.0, borderpad=0.7, **kwargs)
+    for text in legend.get_texts():
+        text.set_color(INK)
+    return legend
+
+
+def beeswarm_offsets(values, width: float, step: float, max_rows: int = 5):
+    """Deterministic vertical offsets for a one-dimensional strip of points.
+
+    A point moves only as far as it must to clear a neighbour, so vertical
+    extent reads as local density — a histogram on its side. Random jitter would
+    put noise on an axis that carries no information, and a reader will take
+    vertical position for meaning whether or not it has any.
+    """
+    values = np.asarray(values, dtype=float)
+    ladder = [0.0]
+    for k in range(1, max_rows):
+        ladder += [k * step, -k * step]
+    offsets = np.zeros(values.size)
+    placed: list[tuple[float, float]] = []
+    for i in np.argsort(values):
+        x = values[i]
+        for candidate in ladder:
+            if all(abs(x - px) >= width or abs(candidate - po) >= step * 0.9
+                   for px, po in placed):
+                break
+        offsets[i] = candidate
+        placed.append((x, candidate))
+    return offsets
 
 
 def _titles(ax, title: str, offset: float = 0.0) -> None:

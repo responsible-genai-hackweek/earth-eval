@@ -9,3 +9,6 @@ __pycache__/
 # checkpoints with no network access, so tracking them only churns the history.
 results/*.png
 results/*.pdf
+
+# SNOTEL station records are raw archive data, not results.
+results/snotel_daily/
