@@ -24,12 +24,31 @@ matplotlib.use("Agg")
 import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+
+# seaborn sets the style - spines, grid weight, tick treatment, type sizing.
+# It does NOT set the colours: those come from the validated palette below,
+# which passed colour-vision-deficiency separation checks that a stock
+# qualitative palette has not.
+sns.set_theme(
+    style="ticks",
+    context="notebook",
+    rc={
+        "axes.edgecolor": "#c9c9c3",
+        "axes.linewidth": 0.9,
+        "grid.color": "#e6e6e1",
+        "grid.linewidth": 0.8,
+        "xtick.color": "#55554e",
+        "ytick.color": "#55554e",
+        "font.size": 10,
+    },
+)
 
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
-    "anomaly_bars", "save", "spaghetti", "trajectory",
-    "model_agreement_scatter", "validation_series",
+    "anomaly_bars", "collect_pdf", "model_agreement_scatter", "save",
+    "spaghetti", "validation_series",
 ]
 
 # Validated categorical pair, in fixed order.
@@ -47,33 +66,25 @@ SURFACE = "#fcfcfb"
 GRID = "#e6e6e1"
 
 
-def _style(ax) -> None:
+def _style(ax, *, grid_axis: str = "y") -> None:
     """Recessive axes and grid; the data carries the ink."""
     ax.set_facecolor(SURFACE)
-    ax.grid(True, axis="y", color=GRID, linewidth=0.8, zorder=0)
+    ax.grid(True, axis=grid_axis, color=GRID, linewidth=0.8, zorder=0)
     ax.set_axisbelow(True)
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
+    sns.despine(ax=ax, top=True, right=True)
     for side in ("left", "bottom"):
-        ax.spines[side].set_color(GRID)
-    ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=0)
+        ax.spines[side].set_color("#c9c9c3")
+    ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=3, width=0.9)
 
 
-def _titles(ax, title: str, subtitle: str) -> None:
-    """Place title and subtitle above the axes without letting them collide.
+def _titles(ax, title: str) -> None:
+    """Place the title above the axes.
 
-    The subtitle is wrapped to the axes width so a long one does not run off the
-    canvas - which a successful render will not tell you about.
+    Titles only. Explanatory prose belongs in a figure caption, where it can be
+    edited without re-rendering and where a reader expects to find it.
     """
-    import textwrap
-
-    width_in = ax.get_figure().get_size_inches()[0]
-    wrapped = "\n".join(textwrap.wrap(subtitle, width=max(40, int(width_in * 10.5))))
-    lines = wrapped.count("\n") + 1
-    ax.text(0.0, 1.10 + 0.055 * lines, title, transform=ax.transAxes, color=INK,
-            fontsize=13, fontweight="bold", va="top", ha="left")
-    ax.text(0.0, 1.045 + 0.055 * (lines - 1), wrapped, transform=ax.transAxes,
-            color=INK_SECONDARY, fontsize=9.5, va="top", ha="left", linespacing=1.4)
+    ax.text(0.0, 1.08, title, transform=ax.transAxes, color=INK,
+            fontsize=12.5, fontweight="bold", va="top", ha="left")
 
 
 #: When set, every saved figure is also appended to this multi-page document.
@@ -126,7 +137,6 @@ def anomaly_bars(
     values: np.ndarray,
     *,
     title: str,
-    subtitle: str,
     unit: str,
     highlight: tuple[int, ...] = (),
     path: Path,
@@ -155,18 +165,12 @@ def anomaly_bars(
         colours.append(_blend(MID_COLOUR, pole, weight))
 
     ax.bar(water_years, values, color=colours, width=0.74, zorder=3)
-    ax.axhline(mean, color=INK_MUTED, linewidth=1.2, linestyle=(0, (4, 3)), zorder=4)
+    ax.axhline(mean, color=INK, linewidth=1.6, zorder=4)
     label = ax.annotate(
-        f"{len(water_years)}-year mean  {mean:.3g} {unit}",
-        xy=(max(water_years), mean),
-        xytext=(0, 6),
-        textcoords="offset points",
-        ha="right",
-        color=INK_SECONDARY,
-        fontsize=8.5,
-        zorder=7,
+        "Mean", xy=(max(water_years), mean), xytext=(0, 5),
+        textcoords="offset points", ha="right", color=INK,
+        fontsize=8.5, zorder=7,
     )
-    # A halo, so the label stays legible where it crosses a bar.
     label.set_path_effects(
         [path_effects.withStroke(linewidth=3.0, foreground=SURFACE)]
     )
@@ -177,100 +181,18 @@ def anomaly_bars(
         ax.set_ylim(0, float(finite.max()) * 1.30)
 
     for wy in highlight:
-        if wy not in water_years:
+        if wy not in water_years or not np.isfinite(values[water_years.index(wy)]):
             continue
         i = water_years.index(wy)
-        if not np.isfinite(values[i]):
-            continue
-        rank = int(ranks[i]) if np.isfinite(ranks[i]) else 0
-        n = len(water_years)
-        end = "lowest" if rank <= n / 2 else "highest"
-        shown = rank if rank <= n / 2 else n - rank + 1
-        # rank 1 reads "lowest of 46", not "1st lowest of 46"
-        phrase = f"{end} of {n}" if shown == 1 else f"{_ordinal(shown)} {end} of {n}"
         ax.annotate(
-            f"WY{wy}\n{values[i]:.3g} {unit}\n{phrase}",
-            xy=(wy, values[i]),
-            xytext=(0, 9),
-            textcoords="offset points",
-            ha="center",
-            fontsize=8.5,
-            color=INK,
-            linespacing=1.35,
+            str(wy), xy=(wy, values[i]), xytext=(0, 6),
+            textcoords="offset points", ha="center", fontsize=9, color=INK,
         )
 
-    ax.set_xlabel("water year", color=INK_SECONDARY, fontsize=9.5)
+    ax.set_xlabel("Water Year", color=INK_SECONDARY, fontsize=9.5)
     ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
-    _titles(ax, title, subtitle)
-    return save(fig, path)
-
-
-def trajectory(
-    series: DailySeries,
-    water_years: list[int],
-    feature_years: tuple[int, ...],
-    *,
-    title: str,
-    subtitle: str,
-    unit: str,
-    path: Path,
-) -> Path:
-    """Daily trajectories for chosen years against the record's spread.
-
-    The band is the record's day-of-year range, so a featured year is read
-    against what the domain normally does rather than against a single number.
-    """
-    fig, ax = plt.subplots(figsize=(10, 4.8))
-    _style(ax)
-
-    stacked = []
-    for wy in water_years:
-        year = water_year_slice(series, wy)
-        if len(year) < 300:
-            continue
-        by_doy = np.full(366, np.nan)
-        for d, v in zip(year.dates, year.values):
-            by_doy[_water_day(d, wy)] = v
-        stacked.append(by_doy)
-
-    if stacked:
-        grid = np.vstack(stacked)
-        # A day-of-year slot can be empty for every year - 29 February outside a
-        # leap year, or days past the end of a partial record. Reducing those
-        # explicitly says so, rather than leaning on an all-NaN warning.
-        filled = np.any(np.isfinite(grid), axis=0)
-        lo = np.full(grid.shape[1], np.nan)
-        hi = np.full(grid.shape[1], np.nan)
-        mid = np.full(grid.shape[1], np.nan)
-        if np.any(filled):
-            lo[filled] = np.nanpercentile(grid[:, filled], 10, axis=0)
-            hi[filled] = np.nanpercentile(grid[:, filled], 90, axis=0)
-            mid[filled] = np.nanmedian(grid[:, filled], axis=0)
-        x = np.arange(366)
-        ax.fill_between(x, lo, hi, color=MID_COLOUR, alpha=0.35, linewidth=0, zorder=2,
-                        label=f"10th-90th percentile, WY{min(water_years)}-{max(water_years)}")
-        ax.plot(x, mid, color=INK_MUTED, linewidth=1.4, zorder=3, label="median")
-
-    palette = (WET_COLOUR, DRY_COLOUR, "#5b7f3a")
-    for i, wy in enumerate(feature_years):
-        year = water_year_slice(series, wy)
-        if len(year) == 0:
-            continue
-        x = np.array([_water_day(d, wy) for d in year.dates])
-        ax.plot(x, year.values, color=palette[i % len(palette)], linewidth=2.0,
-                zorder=5, label=f"WY{wy}")
-
-    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273, 304, 334]
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
-                        "Jun", "Jul", "Aug", "Sep"])
-    ax.set_xlim(0, 305)
-    ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
-    _titles(ax, title, subtitle)
-    legend = ax.legend(frameon=False, fontsize=9, loc="upper left")
-    for text in legend.get_texts():
-        text.set_color(INK_SECONDARY)
+    _titles(ax, title)
     return save(fig, path)
 
 
@@ -282,7 +204,6 @@ def model_agreement_scatter(
     rho: float,
     p_value: float,
     title: str,
-    subtitle: str,
     highlight: tuple[int, ...] = (),
     path: Path,
 ) -> Path:
@@ -316,12 +237,12 @@ def model_agreement_scatter(
                     xytext=(7, 4), textcoords="offset points",
                     fontsize=9, color=INK)
 
-    ax.set_xlabel("ERA5 rank  (1 = lowest)", color=INK_SECONDARY, fontsize=9.5)
-    ax.set_ylabel("MERRA-2 rank  (1 = lowest)", color=INK_SECONDARY, fontsize=9.5)
+    ax.set_xlabel("ERA5 Rank (1 = Lowest)", color=INK_SECONDARY, fontsize=9.5)
+    ax.set_ylabel("MERRA-2 Rank (1 = Lowest)", color=INK_SECONDARY, fontsize=9.5)
     ax.set_xlim(0, n + 1)
     ax.set_ylim(0, n + 1)
     ax.set_aspect("equal")
-    _titles(ax, title, subtitle)
+    _titles(ax, title)
     ax.annotate(
         f"Spearman rho = {rho:.3f}   "
         f"p {'< 1e-16' if p_value == 0 else f'= {p_value:.1e}'}   n = {n}",
@@ -335,10 +256,9 @@ def spaghetti(
     series: DailySeries,
     water_years: list[int],
     *,
-    highlight: dict[int, str],
-    context: tuple[int, ...] = (),
+    low: tuple[int, ...] = (),
+    high: tuple[int, ...] = (),
     title: str,
-    subtitle: str,
     unit: str,
     path: Path,
 ) -> Path:
@@ -346,14 +266,18 @@ def spaghetti(
 
     The background years are a single *population*, not many series, so they
     share one neutral hue. Giving them separate colours would be a cycled-hue
-    rainbow, and the highlighted years would then compete with noise rather than
-    stand out. Overlap does the work a percentile band would otherwise do:
-    where many years coincide the ink darkens, and unlike a band - which is
-    computed per day-of-year and traces a path no real year followed - every
-    curve here is a trajectory that actually happened.
+    rainbow, and the outliers would then compete with noise rather than stand
+    out. Overlap does the work a percentile band would otherwise do: where many
+    years coincide the ink darkens, and unlike a band - which is computed per
+    day-of-year and traces a path no real year followed - every curve here is a
+    trajectory that actually happened.
 
-    ``context`` years are drawn in a lighter tint of the dry pole: near misses,
-    shown so a highlighted low year is not mistaken for a lone outlier.
+    ``low`` and ``high`` are ranked outliers, most extreme first. Each group
+    shades from its pole toward the surface, so rank is legible from weight
+    alone, and each line is labelled with its year rather than a sentence.
+
+    The ensemble mean is the one black line: the reference every other curve is
+    read against.
     """
     fig, ax = plt.subplots(figsize=(11, 5))
     _style(ax)
@@ -364,49 +288,57 @@ def spaghetti(
             return None, None
         return np.array([_water_day(d, wy) for d in year.dates]), year.values
 
-    plotted = 0
+    outliers = set(low) | set(high)
+    stack = []
     for wy in water_years:
-        if wy in highlight or wy in context:
-            continue
         x, y = curve(wy)
         if x is None:
             continue
-        ax.plot(x, y, color=INK_MUTED, linewidth=0.7, alpha=0.30, zorder=2,
-                solid_capstyle="round")
-        plotted += 1
-    if plotted:
-        ax.plot([], [], color=INK_MUTED, linewidth=0.7, alpha=0.55,
-                label=f"{plotted} other water years")
+        if wy not in outliers:
+            ax.plot(x, y, color=INK_MUTED, linewidth=0.7, alpha=0.28, zorder=2,
+                    solid_capstyle="round")
+        stack.append(y)
 
-    # The near misses are one class, not several identities: they share a tint,
-    # so they share a single legend entry naming them all. Two series wearing
-    # one colour with separate legend rows would rest identity on colour alone.
-    tint = _blend(SURFACE, DRY_COLOUR, 0.45)
-    drawn: list[int] = []
-    for wy in context:
-        x, y = curve(wy)
-        if x is None:
-            continue
-        ax.plot(x, y, color=tint, linewidth=1.3, zorder=4)
-        drawn.append(wy)
-    if drawn:
-        ax.plot([], [], color=tint, linewidth=1.3,
-                label="next lowest: " + ", ".join(f"WY{wy}" for wy in sorted(drawn)))
-
-    for wy, colour in highlight.items():
-        x, y = curve(wy)
-        if x is None:
-            continue
-        ax.plot(x, y, color=colour, linewidth=2.4, zorder=6, label=f"WY{wy}",
+    # The ensemble mean, in the one black line on the canvas.
+    if stack:
+        width = max(len(y) for y in stack)
+        grid = np.full((len(stack), width), np.nan)
+        for i, y in enumerate(stack):
+            grid[i, : len(y)] = y
+        filled = np.any(np.isfinite(grid), axis=0)
+        mean = np.full(width, np.nan)
+        mean[filled] = np.nanmean(grid[:, filled], axis=0)
+        ax.plot(np.arange(width), mean, color=INK, linewidth=2.6, zorder=5,
                 solid_capstyle="round")
-        # Direct label at the peak, so identity never rests on colour alone.
-        top = int(np.nanargmax(y))
-        ax.annotate(
-            f"WY{wy}", xy=(x[top], y[top]), xytext=(6, 6),
-            textcoords="offset points", fontsize=10, color=colour,
-            fontweight="bold", zorder=7,
-            path_effects=[path_effects.withStroke(linewidth=3.0, foreground=SURFACE)],
-        )
+
+    placed: list[tuple[float, float]] = []
+    for group, pole in ((low, DRY_COLOUR), (high, WET_COLOUR)):
+        for rank, wy in enumerate(group):
+            x, y = curve(wy)
+            if x is None:
+                continue
+            weight = 1.0 - 0.30 * rank
+            ax.plot(x, y, color=_blend(SURFACE, pole, weight),
+                    linewidth=2.2 - 0.4 * rank, zorder=6 - rank * 0.1,
+                    solid_capstyle="round")
+            top = int(np.nanargmax(y))
+            label_x, label_y = float(x[top]), float(y[top])
+            # Peaks of extreme years cluster, so their labels would overprint
+            # each other into an unreadable run of digits. Nudge upward until
+            # clear of anything already placed nearby.
+            span = float(np.nanmax(mean)) if stack else label_y
+            step = max(span * 0.045, 1e-9)
+            while any(abs(label_x - px) < 26 and abs(label_y - py) < step
+                      for px, py in placed):
+                label_y += step
+            placed.append((label_x, label_y))
+            ax.annotate(
+                str(wy), xy=(label_x, label_y), xytext=(0, 7),
+                textcoords="offset points", ha="center", fontsize=9,
+                color=_blend(SURFACE, pole, max(weight, 0.75)), zorder=8,
+                path_effects=[path_effects.withStroke(linewidth=3.0,
+                                                      foreground=SURFACE)],
+            )
 
     ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273]
     ax.set_xticks(ticks)
@@ -415,10 +347,7 @@ def spaghetti(
     ax.set_xlim(0, 290)
     ax.set_ylim(bottom=0)
     ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
-    _titles(ax, title, subtitle)
-    legend = ax.legend(frameon=False, fontsize=9, loc="upper left", ncol=2)
-    for text in legend.get_texts():
-        text.set_color(INK_SECONDARY)
+    _titles(ax, title)
     return save(fig, path)
 
 
@@ -428,7 +357,6 @@ def validation_series(
     *,
     wy: int,
     title: str,
-    subtitle: str,
     path: Path,
 ) -> Path:
     """Daily fractional snow cover from the satellite reference and each model.
@@ -456,7 +384,7 @@ def validation_series(
         if np.any(missing):
             ax.fill_between(
                 x, 0, 1, where=missing, color=MID_COLOUR, alpha=0.30,
-                linewidth=0, zorder=1, label="no usable reference",
+                linewidth=0, zorder=1, label="No Usable Reference",
             )
 
     ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273, 304, 334]
@@ -465,8 +393,8 @@ def validation_series(
                         "Jun", "Jul", "Aug", "Sep"])
     ax.set_xlim(0, 365)
     ax.set_ylim(0, 1)
-    ax.set_ylabel("fractional snow cover", color=INK_SECONDARY, fontsize=9.5)
-    _titles(ax, title, subtitle)
+    ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY, fontsize=9.5)
+    _titles(ax, title)
     legend = ax.legend(frameon=False, fontsize=9, loc="upper right", ncol=2)
     for text in legend.get_texts():
         text.set_color(INK_SECONDARY)

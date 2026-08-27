@@ -37,6 +37,9 @@ __all__ = ["build_report", "write_findings"]
 #: reader to hear "record low", which it is not.
 MIN_YEARS_FOR_RANK = 10
 
+#: Extreme years shaded and labelled at each end of the spaghetti plots.
+N_OUTLIERS = 3
+
 FIELDS = (
     ("april_first_swe_mm", "1 April SWE", "mm w.e."),
     ("april_first_depth_m", "1 April snow depth", "m"),
@@ -122,10 +125,8 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_swe_mm for s in stats["era5"]]),
-            title="Colorado 1 April snow water equivalent, ERA5",
-            subtitle=f"Domain-mean over 72 MERRA-2 cells, {span}. "
-                     "Colour shows departure from the record mean.",
-            unit="mm w.e.",
+            title="Colorado 1 April Snow Water Equivalent, ERA5",
+            unit="Snow Water Equivalent (mm w.e.)",
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
         )))
@@ -133,10 +134,8 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_depth_m for s in stats["era5"]]),
-            title="Colorado 1 April snow depth, ERA5",
-            subtitle=f"Grid-cell mean geometric depth, {span}. "
-                     "A sharper signal than SWE: the low year's snow was also less dense.",
-            unit="m",
+            title="Colorado 1 April Snow Depth, ERA5",
+            unit="Snow Depth (m)",
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
         )))
@@ -145,32 +144,27 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         # computed per day-of-year and traces a path no real year followed; each
         # curve here actually happened, and the shape of a year is part of the
         # result.
-        peaks = np.array([s.peak_swe_mm for s in stats["era5"]])
-        lowest = [era5_years[i] for i in np.argsort(rank_ascending(peaks))[:3]]
-        near_misses = tuple(wy for wy in lowest if wy not in feature_years)
-        summary["near_miss_years"] = near_misses
-        summary["figures"].append(str(spaghetti(
-            swe, era5_years,
-            highlight={feature_years[0]: WET_COLOUR, feature_years[-1]: DRY_COLOUR},
-            context=near_misses,
-            title=f"Every Colorado water year since {min(era5_years)}, ERA5",
-            subtitle="Daily domain-mean snow water equivalent. Each thin line is "
-                     "one water year; overlap shows where years agree.",
-            unit="mm w.e.",
-            path=results / "spaghetti_swe.png",
-        )))
-
-        summary["figures"].append(str(spaghetti(
-            depth, era5_years,
-            highlight={feature_years[0]: WET_COLOUR, feature_years[-1]: DRY_COLOUR},
-            context=near_misses,
-            title=f"The same years, as snow depth",
-            subtitle="Grid-cell mean geometric depth. The low year separates further "
-                     "here than in water equivalent, because its snow was also "
-                     "less dense.",
-            unit="m",
-            path=results / "spaghetti_depth.png",
-        )))
+        for field, label, unit, data, name in (
+            ("peak_swe_mm", "Snow Water Equivalent",
+             "Snow Water Equivalent (mm w.e.)", swe, "spaghetti_swe.png"),
+            ("april_first_depth_m", "Snow Depth",
+             "Snow Depth (m)", depth, "spaghetti_depth.png"),
+        ):
+            ordered = ranked(stats["era5"], field)
+            by_rank = sorted(
+                (wy for wy in ordered if np.isfinite(ordered[wy][1])),
+                key=lambda wy: ordered[wy][1],
+            )
+            low = tuple(by_rank[:N_OUTLIERS])
+            high = tuple(reversed(by_rank[-N_OUTLIERS:]))
+            summary[f"outliers_{name}"] = {"low": low, "high": high}
+            summary["figures"].append(str(spaghetti(
+                data, era5_years, low=low, high=high,
+                title=f"Colorado {label} by Water Year, ERA5 "
+                      f"({min(era5_years)}\u2013{max(era5_years)})",
+                unit=unit,
+                path=results / name,
+            )))
 
     shared = sorted(
         {s.water_year for s in stats["era5"]} & {s.water_year for s in stats["merra2"]}
@@ -187,9 +181,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             np.array([s.peak_swe_mm for s in stats["era5"] if s.water_year in shared]),
             np.array([s.peak_swe_mm for s in stats["merra2"] if s.water_year in shared]),
             rho=rho, p_value=p,
-            title="Do the two reanalyses rank the years the same way?",
-            subtitle="Peak SWE rank, ERA5 versus MERRA-2. Ranks, not values: the "
-                     "models' magnitude ratio itself varies with snowpack depth.",
+            title="Peak SWE Rank Agreement, ERA5 vs MERRA-2",
             highlight=feature_years,
             path=results / "model_rank_agreement.png",
         )))
@@ -461,9 +453,7 @@ def _validation_figure(checkpoints: Path, results: Path) -> str | None:
         return None
     return str(validation_series(
         days, series, wy=2023,
-        title="Satellite validation, water year 2023",
-        subtitle="Domain-mean fractional snow cover. MODSCAG is the observed "
-                 "reference; ERA5's fraction is diagnosed, not archived.",
+        title="Satellite Validation, Water Year 2023",
         path=results / "wy2023_validation_fsca.png",
     ))
 
