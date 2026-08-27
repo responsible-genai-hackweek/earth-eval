@@ -124,3 +124,43 @@ class TestFetchOrder:
         from merra_modis_comparison.run_analysis import fetch_order
 
         assert fetch_order(2023, 2023) == [2023]
+
+
+class TestShortRecordIsNotRanked:
+    """A rank without a distribution behind it invites a false reading."""
+
+    def test_a_one_year_record_reports_no_rank(self, tmp_path):
+        from merra_modis_comparison.report import write_findings
+        from tests.test_summarize import write_year
+
+        cp = tmp_path / "cp"
+        cp.mkdir()
+        write_year(cp, "era5", 2026, [20.0] * 365)
+        text = write_findings(cp, tmp_path / "res", [2026], feature_years=(2026,)).read_text()
+        assert "not ranked" in text
+        assert "of 1" not in text
+        assert "nan" not in text.lower()
+
+    def test_a_long_record_does_report_ranks(self, tmp_path):
+        from merra_modis_comparison.report import MIN_YEARS_FOR_RANK, write_findings
+        from tests.test_summarize import write_year
+
+        cp = tmp_path / "cp"
+        cp.mkdir()
+        years = list(range(2010, 2010 + MIN_YEARS_FOR_RANK + 2))
+        for i, wy in enumerate(years):
+            write_year(cp, "era5", wy, [10.0 + i] * 365)
+        text = write_findings(cp, tmp_path / "res", years, feature_years=(years[0],)).read_text()
+        assert f"lowest of {len(years)}" in text
+
+    def test_ordinal_suffixes_are_right(self, tmp_path):
+        from merra_modis_comparison.report import write_findings
+        from tests.test_summarize import write_year
+
+        cp = tmp_path / "cp"
+        cp.mkdir()
+        years = list(range(2000, 2015))
+        for i, wy in enumerate(years):
+            write_year(cp, "era5", wy, [10.0 + i] * 365)
+        text = write_findings(cp, tmp_path / "res", years, feature_years=(2002,)).read_text()
+        assert "3rd lowest" in text

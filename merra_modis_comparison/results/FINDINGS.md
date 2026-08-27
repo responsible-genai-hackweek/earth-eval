@@ -2,9 +2,14 @@
 
 Generated from the daily checkpoints. Do not edit by hand.
 
-Record: WY1981-WY2026 (46 complete water years), 72 MERRA-2 cells over Colorado.
+Domain: 72 native MERRA-2 cells over Colorado, 109-104W and 37-41N.
+
+- **ERA5**: WY1981-WY2026, 46 complete water years.
+- **MERRA-2**: WY2026-WY2026, 1 complete water years.
 
 ## ERA5
+
+Ranks below are within WY1981-WY2026.
 
 - **1 April SWE, WY2023**: 157.5 mm w.e. — highest of 46, 184% of the record mean (+2.40 sd).
 - **1 April SWE, WY2026**: 34.33 mm w.e. — lowest of 46, 40% of the record mean (-1.72 sd).
@@ -17,15 +22,12 @@ Record: WY1981-WY2026 (46 complete water years), 72 MERRA-2 cells over Colorado.
 
 ## MERRA-2
 
+Only WY2026-WY2026 available so far; values are reported without ranks.
+
 - **1 April SWE** — omitted deliberately. MERRA-2 melts this domain out almost entirely by April in most years, so the ranking within that band is noise rather than a result.
-
-## Do the two reanalyses agree?
-
-- **1 April snow depth** rank correlation: rho = 0.879, p = 8.1e-04, n = 10
-- **peak SWE** rank correlation: rho = 0.685, p = 2.9e-02, n = 10
-- **season-mean SWE** rank correlation: rho = 0.624, p = 5.4e-02, n = 10
-
-Rank, not magnitude. The two models' magnitude ratio varies with how thin the snowpack is, so a ratio quoted without naming the product is not a fact about Colorado.
+- **1 April snow depth, WY2026**: 0.00495 m — not ranked; only 1 water year available, too few to place it in a distribution.
+- **peak SWE, WY2026**: 13.83 mm w.e. — not ranked; only 1 water year available, too few to place it in a distribution.
+- **season-mean SWE, WY2026**: 1.665 mm w.e. — not ranked; only 1 water year available, too few to place it in a distribution.
 
 ## Satellite validation, WY2023
 

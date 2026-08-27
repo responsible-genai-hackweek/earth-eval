@@ -28,6 +28,11 @@ from .summarize import (
 
 __all__ = ["build_report", "write_findings"]
 
+#: Fewest water years that make a rank worth stating. Below this the record is
+#: reported as a value with its period, and no rank: "lowest of 3" invites a
+#: reader to hear "record low", which it is not.
+MIN_YEARS_FOR_RANK = 10
+
 FIELDS = (
     ("april_first_swe_mm", "1 April SWE", "mm w.e."),
     ("april_first_depth_m", "1 April snow depth", "m"),
@@ -138,7 +143,7 @@ def build_report(
     shared = sorted(
         {s.water_year for s in stats["era5"]} & {s.water_year for s in stats["merra2"]}
     )
-    if len(shared) >= 3:
+    if len(shared) >= MIN_YEARS_FOR_RANK:
         rho, p, n = model_agreement(
             [s for s in stats["era5"] if s.water_year in shared],
             [s for s in stats["merra2"] if s.water_year in shared],
@@ -214,7 +219,13 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
         label = "ERA5" if model == "era5" else "MERRA-2"
         lines += [f"## {label}", ""]
         years = [s.water_year for s in entries]
-        lines += [f"Ranks below are within WY{min(years)}-WY{max(years)}.", ""]
+        lines += [
+            f"Ranks below are within WY{min(years)}-WY{max(years)}."
+            if len(years) >= MIN_YEARS_FOR_RANK
+            else f"Only WY{min(years)}-WY{max(years)} available so far; "
+                 "values are reported without ranks.",
+            "",
+        ]
         for field, name, unit in FIELDS:
             if model == "merra2" and field == "april_first_swe_mm":
                 lines += [
@@ -231,20 +242,31 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
                 value, rank, anomaly = table[wy]
                 if not np.isfinite(value):
                     continue
+                if n < MIN_YEARS_FOR_RANK:
+                    lines.append(
+                        f"- **{name}, WY{wy}**: {value:.4g} {unit} — not ranked; "
+                        f"only {n} water year{'s' if n != 1 else ''} available, "
+                        f"too few to place it in a distribution."
+                    )
+                    continue
                 end = "lowest" if rank <= n / 2 else "highest"
                 shown = int(rank if rank <= n / 2 else n - rank + 1)
-                phrase = f"{end} of {n}" if shown == 1 else f"{shown}{'st' if shown == 1 else 'nd' if shown == 2 else 'rd' if shown == 3 else 'th'} {end} of {n}"
+                suffix = {1: "st", 2: "nd", 3: "rd"}.get(
+                    shown if shown % 100 not in (11, 12, 13) else 0, "th"
+                )
+                phrase = f"{end} of {n}" if shown == 1 else f"{shown}{suffix} {end} of {n}"
                 mean = float(np.nanmean([getattr(s, field) for s in entries]))
                 pct = 100.0 * value / mean if mean else float("nan")
+                anomaly_text = f" ({anomaly:+.2f} sd)" if np.isfinite(anomaly) else ""
                 lines.append(
                     f"- **{name}, WY{wy}**: {value:.4g} {unit} — {phrase}, "
-                    f"{pct:.0f}% of the record mean ({anomaly:+.2f} sd)."
+                    f"{pct:.0f}% of the record mean{anomaly_text}."
                 )
         lines.append("")
 
     shared = sorted({s.water_year for s in stats["era5"]}
                     & {s.water_year for s in stats["merra2"]})
-    if len(shared) >= 3:
+    if len(shared) >= MIN_YEARS_FOR_RANK:
         lines += [
             "## Do the two reanalyses agree?",
             "",
