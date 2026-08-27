@@ -22,8 +22,14 @@ from __future__ import annotations
 import numpy as np
 
 __all__ = [
+    "ERA5_CRITICAL_DEPTH_M",
     "FRESH_SNOW_DENSITY_KG_M3",
+    "MERRA2_FILL_THRESHOLD",
+    "MERRA2_WEMIN_KG_M2",
     "WATER_DENSITY_KG_M3",
+    "era5_snow_cover",
+    "mask_merra2_fill",
+    "merra2_snow_cover",
     "cos_latitude_weights",
     "domain_mean",
     "geometric_depth_m",
@@ -40,6 +46,48 @@ WATER_DENSITY_KG_M3 = 1000.0
 #: Implied densities computed from grid-mean depth bottom out exactly here,
 #: which is what identifies the correct depth convention.
 FRESH_SNOW_DENSITY_KG_M3 = 150.0
+
+#: MERRA-2's minimum snow water equivalent for full grid-cell cover, kg m-2.
+#: FRSNO = min(1, SNOMAS / WEMIN), which also explains why SNODP saturates at
+#: WEMIN / FRESH_SNOW_DENSITY = 0.173333 m.
+MERRA2_WEMIN_KG_M2 = 26.0
+
+#: ERA5's critical geometric snow depth for full cover, metres (IFS scheme).
+ERA5_CRITICAL_DEPTH_M = 0.10
+
+#: Values at or above this are MERRA-2 fill. The published ``valid_range`` is
+#: useless as a bound because it *equals* the fill value, so it admits fill.
+MERRA2_FILL_THRESHOLD = 1e14
+
+
+def mask_merra2_fill(values):
+    """Replace MERRA-2 fill values with NaN.
+
+    Fill is a missing observation, not a zero. The granule's own ``valid_range``
+    cannot be used to detect it, so the sentinel magnitude is used instead.
+    """
+    values = np.asarray(values, dtype=np.float64)
+    return np.where(np.abs(values) >= MERRA2_FILL_THRESHOLD, np.nan, values)
+
+
+def merra2_snow_cover(swe_kg_m2, wemin_kg_m2: float = MERRA2_WEMIN_KG_M2):
+    """MERRA-2's diagnosed fractional snow cover, ``min(1, SWE / WEMIN)``."""
+    swe = np.asarray(swe_kg_m2, dtype=np.float64)
+    return np.minimum(1.0, np.maximum(0.0, swe) / float(wemin_kg_m2))
+
+
+def era5_snow_cover(
+    swe_kg_m2, density_kg_m3, critical_depth_m: float = ERA5_CRITICAL_DEPTH_M
+):
+    """ERA5's diagnosed fractional snow cover from the IFS scheme.
+
+    ERA5 does not archive a fractional snow cover field, so it must be diagnosed
+    as ``min(1, geometric_depth / critical_depth)``. This is a *different*
+    sub-grid scheme from MERRA-2's, so the two are compared, never substituted
+    for one another.
+    """
+    depth = geometric_depth_m(swe_kg_m2, density_kg_m3)
+    return np.minimum(1.0, np.maximum(0.0, depth) / float(critical_depth_m))
 
 
 def grid_mean_depth_m(frsno, snodp):

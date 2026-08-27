@@ -157,3 +157,64 @@ class TestDomainMean:
     def test_rejects_a_latitude_length_mismatch(self):
         with pytest.raises(ValueError, match="latitude"):
             domain_mean(np.zeros((3, 4)), np.array([37.0, 38.0]))
+
+
+class TestFillMasking:
+    def test_merra2_fill_sentinel_becomes_nan(self):
+        from merra_modis_comparison.snowvars import mask_merra2_fill
+
+        v = np.array([0.5, 9.99999987e14, 1.0])
+        out = mask_merra2_fill(v)
+        assert np.isnan(out[1])
+        np.testing.assert_allclose(out[[0, 2]], [0.5, 1.0])
+
+    def test_valid_range_is_not_usable_as_a_bound(self):
+        """MERRA-2's valid_range equals its fill value, so it admits fill."""
+        from merra_modis_comparison.snowvars import MERRA2_FILL_THRESHOLD
+
+        assert MERRA2_FILL_THRESHOLD < 9.99999987e14
+
+
+class TestDiagnosedSnowCover:
+    def test_merra2_cover_saturates_at_the_minimum_snow_water_equivalent(self):
+        from merra_modis_comparison.snowvars import MERRA2_WEMIN_KG_M2, merra2_snow_cover
+
+        assert merra2_snow_cover(MERRA2_WEMIN_KG_M2) == pytest.approx(1.0)
+        assert merra2_snow_cover(2 * MERRA2_WEMIN_KG_M2) == pytest.approx(1.0)
+        assert merra2_snow_cover(MERRA2_WEMIN_KG_M2 / 2) == pytest.approx(0.5)
+
+    def test_merra2_cover_is_zero_without_snow(self):
+        from merra_modis_comparison.snowvars import merra2_snow_cover
+
+        assert merra2_snow_cover(0.0) == pytest.approx(0.0)
+
+    def test_era5_cover_saturates_at_the_critical_depth(self):
+        from merra_modis_comparison.snowvars import ERA5_CRITICAL_DEPTH_M, era5_snow_cover
+
+        # 0.10 m of geometric depth at 250 kg/m3 is 25 kg/m2 of water equivalent
+        full = ERA5_CRITICAL_DEPTH_M * 250.0
+        assert era5_snow_cover(full, 250.0) == pytest.approx(1.0)
+        assert era5_snow_cover(full / 2, 250.0) == pytest.approx(0.5)
+
+    def test_era5_cover_is_undefined_without_a_density(self):
+        from merra_modis_comparison.snowvars import era5_snow_cover
+
+        assert np.isnan(era5_snow_cover(10.0, 0.0))
+
+    def test_both_diagnostics_stay_within_zero_and_one(self):
+        from merra_modis_comparison.snowvars import era5_snow_cover, merra2_snow_cover
+
+        rng = np.random.default_rng(0)
+        swe = rng.uniform(0, 500, 200)
+        m = merra2_snow_cover(swe)
+        e = era5_snow_cover(swe, rng.uniform(100, 500, 200))
+        for arr in (m, e):
+            assert np.nanmin(arr) >= 0.0
+            assert np.nanmax(arr) <= 1.0
+
+    def test_the_two_schemes_are_not_interchangeable(self):
+        """Different sub-grid schemes; neither may be substituted for the other."""
+        from merra_modis_comparison.snowvars import era5_snow_cover, merra2_snow_cover
+
+        swe = 10.0
+        assert merra2_snow_cover(swe) != pytest.approx(era5_snow_cover(swe, 250.0))
