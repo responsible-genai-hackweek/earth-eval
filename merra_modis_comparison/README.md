@@ -264,18 +264,19 @@ of 2,091 ERA5-Land cells can theoretically meet 80% support from the historical
 MODSCAG archive. The southeastern edge intersects unavailable tile `h10v05`;
 affected cells are left unpaired rather than filled or extrapolated.
 
-### ERA5-Land WY2023 spatial bias and MAE
+### ERA5-Land WY2023 spatial normalized bias and MAE
 
 After the ERA5-Land-only WY2023 trial completes, reproduce its November–May
-14-panel spatial figure with:
+14-panel normalized spatial figure with:
 
 ```bash
 ./plot_era5_land_wy2023_spatial.zsh
 ```
 
-The figure uses the same shared monthly scales, subtle USGS 3DEP hillshade, and
-labeled 2,000/3,000 m contours as the MERRA-2 figure, but plots the 2,091
-ERA5-Land 0.1° cells. If its slightly wider DEM is absent, run
+The figure plots NMB and NMAE on shared November–May scales, masks cells where
+paired monthly MODSCAG fSCA is below 5%, and uses the same subtle USGS 3DEP
+hillshade and labeled 2,000/3,000 m contours as the MERRA-2 figure. It contains
+the 2,091 ERA5-Land 0.1° cells. If its slightly wider DEM is absent, run
 `./download_era5_land_coarse_dem.zsh` first. The plot writes
 `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`.
 
@@ -365,7 +366,7 @@ of freedom for each cell.
 | `results/era5_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | ERA5 monthly/seasonal domain and 0.25° cell statistics |
 | `results/era5_land_modis_water_year_2010_2023_monthly_checkpoints/` | ERA5-Land resumable monthly sufficient-statistic CSVs |
 | `results/era5_land_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | ERA5-Land monthly/seasonal domain and 0.1° cell statistics |
-| `results/era5_land_wy2023_nov_may_spatial_bias_mae.png` | ERA5-Land WY2023 November–May cell bias and MAE maps |
+| `results/era5_land_wy2023_nov_may_spatial_bias_mae.png` | ERA5-Land WY2023 November–May NMB and NMAE maps; paired MODSCAG fSCA ≥ 5% |
 
 Daily MODSCAG granules and model subsets are never cached. The ERA monthly
 checkpoints also retain weighted MODSCAG and error sums, allowing bias, MAE,

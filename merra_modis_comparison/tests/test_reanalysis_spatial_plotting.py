@@ -11,8 +11,10 @@ from merra_modis_comparison.reanalysis_metrics import (
     update_reanalysis_stats,
 )
 from merra_modis_comparison.reanalysis_spatial_plotting import (
+    MIN_MODIS_FSCA_PCT,
     load_reanalysis_elevation_grid,
     reanalysis_cell_metric_grid,
+    reanalysis_normalized_metric_grid,
     write_reanalysis_spatial_monthly_plot,
 )
 
@@ -48,6 +50,39 @@ def test_reanalysis_cell_metric_grid_preserves_shape_and_sign():
     assert bias.shape == (3, 3)
     assert np.allclose(bias, -10)
     assert np.allclose(mae, 10)
+
+
+def test_normalized_metrics_use_paired_modscag_denominator_and_five_pct_mask():
+    config = ReanalysisRunConfig(
+        start_water_year=2023,
+        end_water_year=2023,
+        model_ids=("era5-land",),
+        west=-109,
+        east=-108.8,
+        south=37,
+        north=37.2,
+    )
+    grid = config.target_grid("era5-land")
+    stats = _stats(config, -0.1)
+    nmb = reanalysis_normalized_metric_grid(stats, "nmb_pct", grid.shape)
+    nmae = reanalysis_normalized_metric_grid(stats, "nmae_pct", grid.shape)
+    assert np.allclose(nmb, -20)
+    assert np.allclose(nmae, 20)
+    assert MIN_MODIS_FSCA_PCT == 5.0
+
+    low_snow = ReanalysisStatsBlock.empty(grid.size)
+    update_reanalysis_stats(
+        low_snow,
+        np.full(grid.shape, 0.06),
+        np.full(grid.shape, 0.04),
+        np.full(grid.shape, 9),
+        np.full(grid.shape, 10),
+        np.full(grid.shape, 7),
+    )
+    masked = reanalysis_normalized_metric_grid(
+        low_snow, "nmb_pct", grid.shape
+    )
+    assert np.isnan(masked).all()
 
 
 def test_era5_land_fourteen_panel_spatial_plot(tmp_path):

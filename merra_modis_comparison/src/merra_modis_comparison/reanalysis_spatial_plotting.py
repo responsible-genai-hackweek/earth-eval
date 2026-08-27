@@ -27,6 +27,11 @@ from .spatial_plotting import (
 )
 
 
+MIN_MODIS_FSCA_PCT = 5.0
+NORMALIZED_BIAS_LIMIT_PCT = 120.0
+NORMALIZED_MAE_LIMIT_PCT = 140.0
+
+
 @dataclass(frozen=True)
 class _ElevationConfig:
     target_grid: RegularLatLonGrid
@@ -85,6 +90,45 @@ def reanalysis_cell_metric_grid(
     ).reshape(shape)
 
 
+def reanalysis_normalized_metric_grid(
+    stats: ReanalysisStatsBlock,
+    metric: str,
+    shape: tuple[int, int],
+    minimum_modis_fsca_pct: float = MIN_MODIS_FSCA_PCT,
+) -> np.ndarray:
+    """Return NMB or NMAE after masking cells with little paired MODSCAG snow."""
+
+    if metric not in {"nmb_pct", "nmae_pct"}:
+        raise ValueError(f"unsupported normalized reanalysis metric: {metric}")
+    if stats.n_cells != shape[0] * shape[1]:
+        raise ValueError("statistics cell count differs from the plotting grid")
+    weights = stats.sum_w[: stats.n_cells]
+    reference_sum = stats.sum_w_reference[: stats.n_cells]
+    mean_reference_pct = np.divide(
+        100.0 * reference_sum,
+        weights,
+        out=np.full(weights.shape, np.nan, dtype=np.float64),
+        where=weights > 0,
+    )
+    numerator = (
+        stats.sum_w_error[: stats.n_cells]
+        if metric == "nmb_pct"
+        else stats.sum_w_abs_error[: stats.n_cells]
+    )
+    usable = (
+        (mean_reference_pct >= minimum_modis_fsca_pct)
+        & (reference_sum > 0)
+        & np.isfinite(mean_reference_pct)
+    )
+    values = np.divide(
+        100.0 * numerator,
+        reference_sum,
+        out=np.full(reference_sum.shape, np.nan, dtype=np.float64),
+        where=usable,
+    )
+    return values.reshape(shape)
+
+
 def write_reanalysis_spatial_monthly_plot(
     monthly_stats: list[tuple[str, ReanalysisStatsBlock]],
     config: ReanalysisRunConfig,
@@ -92,23 +136,21 @@ def write_reanalysis_spatial_monthly_plot(
     output: Path,
     elevation: ElevationGrid,
 ) -> None:
-    """Write seven monthly bias/MAE rows with common scales and terrain context."""
+    """Write seven monthly NMB/NMAE rows with common scales and terrain context."""
 
     if len(monthly_stats) != 7:
         raise ValueError("the November–May spatial figure requires seven months")
     grid = config.target_grid(spec.model_id)
-    bias_grids = [
-        reanalysis_cell_metric_grid(stats, "bias_pp", grid.shape)
+    nmb_grids = [
+        reanalysis_normalized_metric_grid(stats, "nmb_pct", grid.shape)
         for _, stats in monthly_stats
     ]
-    mae_grids = [
-        reanalysis_cell_metric_grid(stats, "mae_pp", grid.shape)
+    nmae_grids = [
+        reanalysis_normalized_metric_grid(stats, "nmae_pct", grid.shape)
         for _, stats in monthly_stats
     ]
-    bias_limit = max(float(np.nanmax(np.abs(values))) for values in bias_grids)
-    mae_limit = max(float(np.nanmax(values)) for values in mae_grids)
-    if not np.isfinite(bias_limit) or not np.isfinite(mae_limit):
-        raise ValueError("reanalysis spatial metrics contain no finite values")
+    if not any(np.isfinite(values).any() for values in (*nmb_grids, *nmae_grids)):
+        raise ValueError("normalized reanalysis spatial metrics contain no finite values")
 
     figure, axes = plt.subplots(
         7,
@@ -128,9 +170,13 @@ def write_reanalysis_spatial_monthly_plot(
     terrain_extent = _terrain_extent(elevation)
     bias_image = None
     mae_image = None
+    normalized_bias_cmap = plt.get_cmap("RdBu_r").copy()
+    normalized_mae_cmap = plt.get_cmap("magma_r").copy()
+    normalized_bias_cmap.set_bad("#c8c8c8", alpha=0.78)
+    normalized_mae_cmap.set_bad("#c8c8c8", alpha=0.78)
 
-    for row, ((label, _), bias, mae) in enumerate(
-        zip(monthly_stats, bias_grids, mae_grids, strict=True)
+    for row, ((label, _), nmb, nmae) in enumerate(
+        zip(monthly_stats, nmb_grids, nmae_grids, strict=True)
     ):
         for axis in axes[row]:
             axis.imshow(
@@ -146,10 +192,10 @@ def write_reanalysis_spatial_monthly_plot(
         bias_image = axes[row, 0].pcolormesh(
             longitude_edges,
             latitude_edges,
-            bias,
-            cmap="RdBu_r",
-            vmin=-bias_limit,
-            vmax=bias_limit,
+            nmb,
+            cmap=normalized_bias_cmap,
+            vmin=-NORMALIZED_BIAS_LIMIT_PCT,
+            vmax=NORMALIZED_BIAS_LIMIT_PCT,
             shading="flat",
             edgecolors="none",
             linewidth=0,
@@ -159,10 +205,10 @@ def write_reanalysis_spatial_monthly_plot(
         mae_image = axes[row, 1].pcolormesh(
             longitude_edges,
             latitude_edges,
-            mae,
-            cmap="magma_r",
+            nmae,
+            cmap=normalized_mae_cmap,
             vmin=0,
-            vmax=mae_limit,
+            vmax=NORMALIZED_MAE_LIMIT_PCT,
             shading="flat",
             edgecolors="none",
             linewidth=0,
@@ -198,8 +244,8 @@ def write_reanalysis_spatial_monthly_plot(
         axes[row, 0].set_anchor("E")
         axes[row, 1].set_anchor("W")
 
-    axes[0, 0].set_title("Mean bias", fontsize=13)
-    axes[0, 1].set_title("Mean absolute error", fontsize=13)
+    axes[0, 0].set_title("Normalized mean bias\n(NMB)", fontsize=12)
+    axes[0, 1].set_title("Normalized mean absolute error\n(NMAE)", fontsize=12)
     for axis in axes[-1]:
         axis.set_xlabel("Longitude (°E)")
         axis.set_xticks((-109, -108, -107, -106, -105, -104))
@@ -212,7 +258,8 @@ def write_reanalysis_spatial_monthly_plot(
         shrink=0.68,
         pad=0.018,
         anchor=(1.0, 0.5),
-        label=f"{spec.display_name} − MODSCAG\n(percentage points)",
+        extend="both",
+        label="NMB (%)",
     )
     figure.colorbar(
         mae_image,
@@ -221,14 +268,16 @@ def write_reanalysis_spatial_monthly_plot(
         shrink=0.68,
         pad=0.018,
         anchor=(0.0, 0.5),
-        label="Absolute error\n(percentage points)",
+        extend="max",
+        label="NMAE (%)",
     )
     figure.suptitle(
         f"{spec.display_name} versus daily STC-MODSCAG fractional snow cover\n"
         f"by {spec.longitude_step:g}° {spec.display_name} grid cell — Colorado, "
         "November 2022–May 2023\n"
         f"15:00 UTC; MODSCAG aggregated to {spec.display_name}\n"
-        "USGS 3DEP hillshade; 2,000 and 3,000 m contours",
+        "Masked where paired MODSCAG fSCA < 5%; USGS 3DEP hillshade; "
+        "2,000 and 3,000 m contours",
         fontsize=11.5,
     )
     _save_figure(figure, output)
@@ -237,7 +286,7 @@ def write_reanalysis_spatial_monthly_plot(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Plot November 2022–May 2023 ERA5-Land cell bias and MAE from "
+            "Plot November 2022–May 2023 ERA5-Land cell NMB and NMAE from "
             "validated monthly comparison checkpoints"
         )
     )

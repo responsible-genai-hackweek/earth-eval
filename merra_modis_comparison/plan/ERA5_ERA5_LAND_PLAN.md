@@ -78,6 +78,7 @@ Status: **completed 2026-08-26**
 - All 12 WY2023 monthly checkpoints validated and the overall and 0.1° cell CSVs
   were written.
 - The November 2022–May 2023 spatial artifact reproduces the established
-  14-panel mean-bias/MAE layout on the ERA5-Land grid with subtle USGS 3DEP
-  hillshade and labeled 2,000/3,000 m contours.
+  14-panel NMB/NMAE layout on the ERA5-Land grid with subtle USGS 3DEP
+  hillshade and labeled 2,000/3,000 m contours. Normalized cells are masked
+  where paired monthly MODSCAG fSCA is below 5%.
 - Output: `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`.
