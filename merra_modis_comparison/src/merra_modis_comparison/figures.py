@@ -13,7 +13,6 @@ are direct-labelled or legended, and the extreme years are annotated.
 from __future__ import annotations
 
 import os
-from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
@@ -25,6 +24,12 @@ import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+
+INK = "#1b1b18"
+INK_SECONDARY = "#55554e"
+INK_MUTED = "#8a8a80"
+SURFACE = "#fcfcfb"
+GRID = "#e6e6e1"
 
 # seaborn sets the style - spines, grid weight, tick treatment, type sizing.
 # It does NOT set the colours: those come from the validated palette below,
@@ -38,8 +43,10 @@ sns.set_theme(
         "axes.linewidth": 0.9,
         "grid.color": "#e6e6e1",
         "grid.linewidth": 0.8,
-        "xtick.color": "#55554e",
-        "ytick.color": "#55554e",
+        "xtick.color": INK,
+        "ytick.color": INK,
+        "axes.labelcolor": INK,
+        "text.color": INK,
         "font.size": 12,
         "axes.labelsize": 12.5,
         "xtick.labelsize": 11,
@@ -51,7 +58,7 @@ sns.set_theme(
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
-    "anomaly_bars", "collect_pdf", "model_agreement_scatter", "save",
+    "anomaly_bars", "model_agreement_scatter", "save",
     "spaghetti", "spaghetti_bands", "validation_series",
 ]
 
@@ -70,11 +77,7 @@ MID_COLOUR = "#b9b9b4"
 DRY_SHADES = ("#8f4500", "#e07000", "#f6ad5e")
 WET_SHADES = ("#123c86", "#1f6feb", "#7fadf6")
 
-INK = "#1b1b18"
-INK_SECONDARY = "#55554e"
-INK_MUTED = "#8a8a80"
-SURFACE = "#fcfcfb"
-GRID = "#e6e6e1"
+
 
 
 def _style(ax, *, grid_axis: str = "y") -> None:
@@ -85,7 +88,7 @@ def _style(ax, *, grid_axis: str = "y") -> None:
     sns.despine(ax=ax, top=True, right=True)
     for side in ("left", "bottom"):
         ax.spines[side].set_color("#c9c9c3")
-    ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=3, width=0.9)
+    ax.tick_params(colors=INK, labelsize=11, length=3, width=0.9)
 
 
 def _titles(ax, title: str, offset: float = 0.0) -> None:
@@ -99,33 +102,12 @@ def _titles(ax, title: str, offset: float = 0.0) -> None:
             fontsize=15, fontweight="bold", va="top", ha="left")
 
 
-#: When set, every saved figure is also appended to this multi-page document.
-_COLLECTOR = None
-
-
-@contextmanager
-def collect_pdf(path: Path):
-    """Collect every figure saved inside this block into one PDF document."""
-    global _COLLECTOR
-    from matplotlib.backends.backend_pdf import PdfPages
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(f".tmp{os.getpid()}.pdf")
-    with PdfPages(tmp) as pages:
-        _COLLECTOR = pages
-        try:
-            yield
-        finally:
-            _COLLECTOR = None
-    tmp.replace(path)
-
-
 def save(fig, path: Path) -> Path:
     """Write a figure atomically, as both a raster and a vector document.
 
-    PDF is the better artefact for these plots: a spaghetti panel is dozens of
-    hairline strokes, and rasterising them loses exactly the thin lines the
-    figure is made of. The PNG stays for quick viewing.
+    One PDF per plot. PDF is the better artefact for these: a spaghetti panel is
+    dozens of hairline strokes, and rasterising them loses exactly the thin lines
+    the figure is made of. The PNG stays for quick viewing.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     for suffix in (".png", ".pdf"):
@@ -138,8 +120,6 @@ def save(fig, path: Path) -> Path:
             facecolor=SURFACE,
         )
         tmp.replace(target)
-    if _COLLECTOR is not None:
-        _COLLECTOR.savefig(fig, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
     return path.with_suffix(".png")
 
@@ -201,8 +181,8 @@ def anomaly_bars(
             textcoords="offset points", ha="center", fontsize=10.5, color=INK,
         )
 
-    ax.set_xlabel("Water Year", color=INK_SECONDARY)
-    ax.set_ylabel(unit, color=INK_SECONDARY)
+    ax.set_xlabel("Water Year", color=INK)
+    ax.set_ylabel(unit, color=INK)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
     _titles(ax, title)
     return save(fig, path)
@@ -249,8 +229,8 @@ def model_agreement_scatter(
                     xytext=(7, 4), textcoords="offset points",
                     fontsize=9, color=INK)
 
-    ax.set_xlabel("ERA5 Rank (1 = Lowest)", color=INK_SECONDARY)
-    ax.set_ylabel("MERRA-2 Rank (1 = Lowest)", color=INK_SECONDARY)
+    ax.set_xlabel("ERA5 Rank (1 = Lowest)", color=INK)
+    ax.set_ylabel("MERRA-2 Rank (1 = Lowest)", color=INK)
     ax.set_xlim(0, n + 1)
     ax.set_ylim(0, n + 1)
     ax.set_aspect("equal")
@@ -295,7 +275,7 @@ def spaghetti(
     _style(ax)
     _draw_spaghetti(ax, series, water_years, low, high)
     _month_axis(ax)
-    ax.set_ylabel(unit, color=INK_SECONDARY)
+    ax.set_ylabel(unit, color=INK)
     _titles(ax, title)
     _legend(ax)
     return save(fig, path)
@@ -310,7 +290,7 @@ def _legend(ax):
     )
     legend.get_frame().set_linewidth(0.9)
     for text in legend.get_texts():
-        text.set_color(INK_SECONDARY)
+        text.set_color(INK)
     return legend
 
 
@@ -336,7 +316,7 @@ def spaghetti_bands(
     for index, (ax, (label, series, low, high)) in enumerate(zip(axes, panels)):
         _style(ax)
         _draw_spaghetti(ax, series, water_years, low, high)
-        ax.set_ylabel(unit, color=INK_SECONDARY)
+        ax.set_ylabel(unit, color=INK)
         # The band sits above its panel, where a panel label belongs, rather
         # than floating inside the data area.
         ax.text(0.0, 1.02, label, transform=ax.transAxes, ha="left", va="bottom",
@@ -459,7 +439,7 @@ def validation_series(
                         "Jun", "Jul"])
     ax.set_xlim(0, 290)
     ax.set_ylim(0, 1)
-    ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY)
+    ax.set_ylabel("Fractional Snow Cover", color=INK)
     _titles(ax, title)
     legend = ax.legend(
         loc="upper right", ncol=2, borderpad=0.7,
@@ -467,7 +447,7 @@ def validation_series(
     )
     legend.get_frame().set_linewidth(0.9)
     for text in legend.get_texts():
-        text.set_color(INK_SECONDARY)
+        text.set_color(INK)
     return save(fig, path)
 
 

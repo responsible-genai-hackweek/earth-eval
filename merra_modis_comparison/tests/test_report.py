@@ -77,11 +77,10 @@ class TestFigures:
             assert pdf.exists(), f"no PDF beside {Path(path).name}"
             assert pdf.stat().st_size > 2000
 
-    def test_a_combined_document_collects_them(self, built):
+    def test_there_is_no_combined_document(self, built):
+        """One PDF per plot; a multi-page bundle is a separate deliverable."""
         _, res, _ = built
-        combined = res / "colorado_snowpack_figures.pdf"
-        assert combined.exists()
-        assert combined.stat().st_size > 10000
+        assert not list(res.glob("colorado_snowpack_figures*"))
 
     def test_no_temporary_files_survive(self, built):
         _, res, _ = built
