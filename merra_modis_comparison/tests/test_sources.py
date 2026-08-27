@@ -174,3 +174,23 @@ class TestSubsetValidation:
         with pytest.raises(ValueError, match="fill"):
             validate_subset(values, self.LAT, self.LON, date(2023, 1, 15),
                             "minutes since 2023-01-15 00:30:00")
+
+
+class TestModscagUrls:
+    def test_url_matches_the_archive_layout(self):
+        from merra_modis_comparison.sources.modscag import granule_url
+
+        url = granule_url("h09v04", date(2023, 1, 15))
+        assert url.endswith(
+            "STC_MODSCGDRF_HIST_v1/h09v04/2023/STC_MODSCGDRF_HIST_h09v04_20230115_v01.0.nc"
+        )
+
+    def test_uses_the_https_mirror_not_ftp(self):
+        from merra_modis_comparison.sources.modscag import granule_url
+
+        assert granule_url("h09v05", date(2023, 3, 1)).startswith("https://")
+
+    def test_fill_is_above_the_valid_percentage_range(self):
+        from merra_modis_comparison.sources.modscag import MODSCAG_FILL, MODSCAG_SCALE
+
+        assert MODSCAG_FILL > MODSCAG_SCALE

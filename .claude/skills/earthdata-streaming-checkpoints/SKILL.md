@@ -29,6 +29,16 @@ Read them through the provider's own resolution (`~/.netrc` or an environment
 token). Never accept a credential as a CLI argument, never log it, never write
 it into a results file, a checkpoint header, or a test fixture.
 
+Two things about Earthdata Login break otherwise-correct code:
+
+- **The login redirect crosses hosts, and HTTP clients drop the Authorization
+  header when they do.** The symptom is a bare 401 on a request that should have
+  worked. Re-attach credentials deliberately for the archive and login hosts.
+- **HEAD does not trigger the login flow.** A HEAD returns 401 with no redirect
+  history, while the same URL fetched with GET completes the hop and returns
+  206. Get a file's size from `Content-Range` on a one-byte ranged GET instead -
+  it costs the same one request and works on a cold session.
+
 ## Concurrency: two independent limits
 
 | Resource | Limit | Why |
