@@ -62,18 +62,18 @@ __all__ = [
     "spaghetti", "spaghetti_bands", "validation_series",
 ]
 
-# Model identity, deliberately outside the wet/dry ramps below. Using the same
-# blue and orange for both would make a reader carry one meaning across figures
-# and read it as the other - model identity is not wetness.
+# Model identity in the NASA palette: NASA blue for MERRA-2, NASA red for ERA5.
 #
-# The exact NASA brand pair was tried and measured: NASA blue sits dE 1.8 from
-# the darkest wet shade under normal vision, and NASA red dE 1.1 from the dry
-# orange under deuteranopia, so it mirrors the ramps almost exactly - the
-# opposite of the intent. This pair keeps cool-for-MERRA-2 and red-for-ERA5
-# while actually separating: it passes every check standalone, and against the
-# full set the worst separation is a pair WITHIN the ramps, not one it creates.
-ERA5_COLOUR = "#C2185B"
-MERRA2_COLOUR = "#0097A7"
+# Known clash, recorded rather than worked around: NASA blue sits dE 1.8 from the
+# darkest wet shade under normal vision, and NASA red dE 1.1 from the dry orange
+# under deuteranopia. The two sets never share a figure - model colours appear on
+# the comparison and validation panels, year shades on the spaghetti and band
+# panels - so the collision is across figures, not within one. If it needs
+# fixing, move the year ramps, not these.
+NASA_BLUE = "#0B3D91"
+NASA_RED = "#FC3D21"
+ERA5_COLOUR = NASA_RED
+MERRA2_COLOUR = NASA_BLUE
 # Diverging poles reuse those hues; the midpoint is neutral, never a hue.
 DRY_COLOUR = "#e07000"
 WET_COLOUR = "#1f6feb"
