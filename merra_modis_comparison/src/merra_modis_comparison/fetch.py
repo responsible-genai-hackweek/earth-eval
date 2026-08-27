@@ -216,9 +216,12 @@ def merra2_daily_cells(days: list[date], workers: int = 16) -> dict[str, np.ndar
         return day, _fetch_merra2_day(session, day, grid)
 
     results: dict[date, dict[str, np.ndarray]] = {}
-    with cf.ThreadPoolExecutor(max_workers=workers) as pool:
-        for day, values in pool.map(worker, days):
-            results[day] = values
+    # One pool for the whole run, not one per water year. A fresh pool means
+    # fresh threads, which means every thread repeats the Earthdata OAuth
+    # redirect handshake for each year - sixteen handshakes a year, paid over
+    # and over. Reusing the threads keeps their authenticated sessions alive.
+    for day, values in _merra2_pool(workers).map(worker, days):
+        results[day] = values
 
     ordered = sorted(results)
     out: dict[str, np.ndarray] = {
@@ -272,6 +275,18 @@ def _weighted_mean(values: np.ndarray, weights: np.ndarray) -> float:
     if not np.any(ok):
         return float("nan")
     return float((values[ok] * weights[ok]).sum() / weights[ok].sum())
+
+
+_MERRA2_POOL: dict[int, cf.ThreadPoolExecutor] = {}
+
+
+def _merra2_pool(workers: int) -> cf.ThreadPoolExecutor:
+    """A process-lifetime thread pool, so authenticated sessions persist."""
+    if workers not in _MERRA2_POOL:
+        _MERRA2_POOL[workers] = cf.ThreadPoolExecutor(
+            max_workers=workers, thread_name_prefix="merra2"
+        )
+    return _MERRA2_POOL[workers]
 
 
 class _ThreadLocal:
