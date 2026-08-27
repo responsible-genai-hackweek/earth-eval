@@ -9,9 +9,11 @@ Read:
 - `README.md` for the public experiment description;
 - `research/FSCA_PRODUCT_NOTES.md` for product research;
 - `research/ERA5_PRODUCT_NOTES.md` for ERA product research;
+- `research/NARR_PRODUCT_NOTES.md` for NARR product and grid research;
 - `plan/FSCA_PIPELINE_PLAN.md` and `plan/MULTIYEAR_2010_2023_PLAN.md` for the
   research-plan-implement record;
 - `plan/ERA5_ERA5_LAND_PLAN.md` for the multi-model extension;
+- `plan/NARR_EXTENSION_PLAN.md` for the projected-grid/backend extension;
 - `src/merra_modis_comparison/config.py` for the domain and operational limits;
 - `src/merra_modis_comparison/products.py` for data access and regridding; and
 - checkpoint metadata before assuming an existing file is compatible.
@@ -29,6 +31,7 @@ Earthdata credentials through `~/.netrc` or `EARTHDATA_TOKEN`. MODSCAG is
 downloaded from a public FTP archive. ERA5 access requires a CDS personal
 access token through `~/.cdsapirc` or `CDSAPI_KEY`, plus accepted ERA5 and
 ERA5-Land licences. Never print, copy, or commit credentials.
+NARR access through NOAA PSL OPeNDAP is public and requires no credentials.
 
 Run the preflight before a fresh download campaign:
 
@@ -78,6 +81,17 @@ gate, downloads MODSCAG once per day for both grids, and writes independent
 model-month checkpoints. Monthly CDS NetCDF subsets are task-local temporary
 files and must never be moved into `results/`.
 
+For NARR on its native Lambert conformal grid, use:
+
+```bash
+./run_narr_to_completion.zsh
+```
+
+It uses the same 16 workers and eight FTP slots, limits concurrent public NOAA
+OPeNDAP reads to four, reads one monthly 15Z subset into memory per task, and
+writes only model-specific monthly sufficient-statistic checkpoints and final
+CSVs.
+
 ## Checkpoint logic
 
 The main run produces 168 monthly CSVs in
@@ -123,5 +137,5 @@ successful plotting command. Check titles, month order, masks, color limits,
 hatching, terrain visibility, whitespace, and axis labels.
 
 After a scientific change, spot-check the output CSV metadata and confirm that
-the number and identity of target cells remain 72 unless the domain was
-intentionally changed.
+the number and identity of target cells remain 72 for MERRA-2 or 185 for NARR
+unless the domain was intentionally changed.

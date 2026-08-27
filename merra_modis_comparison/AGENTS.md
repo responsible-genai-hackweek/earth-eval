@@ -16,10 +16,11 @@ user-visible scientific or operational changes.
   model field: MERRA-2 `M2T1NXLND.5.12.4:FRSNO` at index 15
   (15:00–16:00 UTC), ERA5 fSCA diagnosed at 15:00 UTC from `snow_depth` and
   `snow_density` with ECMWF's documented equation, or ERA5-Land `snow_cover`
-  at 15:00 UTC.
+  at 15:00 UTC, or NARR `snowc` at the exact 15:00 UTC analysis.
 - Aggregate equal-area 500 m MODSCAG pixel centers separately to the selected
   model product grid: 0.625° × 0.5° MERRA-2, 0.25° CDS ERA5, or 0.1° CDS
-  ERA5-Land. Do not interpolate a model down to MODIS resolution.
+  ERA5-Land, or the native 32.463 km NARR Lambert conformal grid. Do not
+  interpolate a model down to MODIS resolution.
 - Require 80% daily MODSCAG support and weight pooled errors by valid fine-pixel
   count.
 - Keep the error sign model minus MODSCAG.
@@ -43,9 +44,9 @@ do not trigger a multi-year redownload for a statistic already recoverable from
 saved sums and counts.
 
 The intended local execution settings are 16 worker processes and eight FTP
-connections. The multi-model ERA runner also limits concurrent CDS retrievals
-to four. Do not raise the FTP limit to the CPU count because the archive rejects
-ten concurrent connections per IP.
+connections. The multi-model runner also limits concurrent remote model
+retrievals to four. Do not raise the FTP limit to the CPU count because the
+archive rejects ten concurrent connections per IP.
 
 Never expose or commit Earthdata or CDS tokens, passwords, `.netrc` or
 `.cdsapirc` content, raw daily granules, temporary subsets, Python caches, or

@@ -20,6 +20,24 @@ def test_archive_edge_is_kept_in_expected_support_but_not_downloaded():
     assert "h10v05" not in archive_tiles
 
 
+def test_narr_projected_grid_maps_modscag_pixels_and_reports_archive_edge():
+    config = ReanalysisRunConfig(model_ids=("narr",))
+    mappings, archive_tiles = _grid_mappings(config, MODEL_SPECS["narr"])
+    grid = config.target_grid("narr")
+    assert set(mappings) == {"h09v04", "h09v05", "h10v04", "h10v05"}
+    assert "h10v05" not in archive_tiles
+    expected = sum(
+        (mapping.expected_counts for mapping in mappings.values()),
+        start=np.zeros(grid.size, dtype=np.int64),
+    )
+    archived = sum(
+        (mappings[tile].expected_counts for tile in archive_tiles),
+        start=np.zeros(grid.size, dtype=np.int64),
+    )
+    assert np.all(expected > 4_600)
+    assert np.count_nonzero(archived / expected >= 0.8) == 183
+
+
 def test_reanalysis_final_rows_include_model_and_native_cell_metadata():
     config = ReanalysisRunConfig(
         start_water_year=2023,

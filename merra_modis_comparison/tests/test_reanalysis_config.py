@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from merra_modis_comparison.reanalysis_config import ReanalysisRunConfig
+from merra_modis_comparison.reanalysis_checkpoints import config_fingerprint
+from merra_modis_comparison.reanalysis_config import MODEL_SPECS
 
 
 def test_era_product_grids_select_centers_inside_colorado_domain():
@@ -30,3 +32,13 @@ def test_execution_concurrency_does_not_change_product_grids():
     right = ReanalysisRunConfig(workers=16, cds_connections=4)
     assert left.target_grid("era5") == right.target_grid("era5")
     assert left.target_grid("era5-land") == right.target_grid("era5-land")
+
+
+def test_legacy_era_checkpoint_fingerprints_are_preserved():
+    config = ReanalysisRunConfig()
+    assert config_fingerprint(config, MODEL_SPECS["era5"]) == (
+        "29ca56c19e8f9bdd52b88be1796385bdbadfa2385cd78d7750a905c36783ec2f"
+    )
+    assert config_fingerprint(config, MODEL_SPECS["era5-land"]) == (
+        "adc9f9d09f06866b8d5aa8bf0afc7ee2f4ebb29afc1cc3ba189ed6b0c2c04a49"
+    )

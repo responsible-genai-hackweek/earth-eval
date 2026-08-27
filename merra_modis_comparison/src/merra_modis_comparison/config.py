@@ -20,6 +20,10 @@ class TargetGrid:
     lat_indices: tuple[int, ...]
 
     @property
+    def model_id(self) -> str:
+        return "merra2"
+
+    @property
     def shape(self) -> tuple[int, int]:
         return (len(self.lats), len(self.lons))
 
@@ -42,12 +46,63 @@ class TargetGrid:
         )
 
     @property
+    def geographic_bounds(self) -> tuple[float, float, float, float]:
+        return (
+            float(self.lon_edges[0]),
+            float(self.lat_edges[0]),
+            float(self.lon_edges[-1]),
+            float(self.lat_edges[-1]),
+        )
+
+    @property
+    def fingerprint_payload(self) -> dict[str, object]:
+        return {
+            "lons": self.lons,
+            "lats": self.lats,
+            "lon_indices": self.lon_indices,
+            "lat_indices": self.lat_indices,
+        }
+
+    @property
+    def resolution_label(self) -> str:
+        return f"{MERRA_LON_STEP:g}° × {MERRA_LAT_STEP:g}°"
+
+    @property
     def lat_slice(self) -> slice:
         return slice(self.lat_indices[0], self.lat_indices[-1] + 1)
 
     @property
     def lon_slice(self) -> slice:
         return slice(self.lon_indices[0], self.lon_indices[-1] + 1)
+
+    def assign_points(
+        self, longitudes: np.ndarray, latitudes: np.ndarray
+    ) -> np.ndarray:
+        if longitudes.shape != latitudes.shape:
+            raise ValueError("longitude and latitude point arrays must match")
+        finite = np.isfinite(longitudes) & np.isfinite(latitudes)
+        lon_bin = np.full(longitudes.shape, -1, dtype=np.int64)
+        lat_bin = np.full(latitudes.shape, -1, dtype=np.int64)
+        lon_bin[finite] = np.floor(
+            (longitudes[finite] - self.lon_edges[0]) / MERRA_LON_STEP
+        ).astype(np.int64)
+        lat_bin[finite] = np.floor(
+            (latitudes[finite] - self.lat_edges[0]) / MERRA_LAT_STEP
+        ).astype(np.int64)
+        inside = (
+            finite
+            & (longitudes >= self.lon_edges[0])
+            & (longitudes < self.lon_edges[-1])
+            & (latitudes >= self.lat_edges[0])
+            & (latitudes < self.lat_edges[-1])
+            & (lon_bin >= 0)
+            & (lon_bin < len(self.lons))
+            & (lat_bin >= 0)
+            & (lat_bin < len(self.lats))
+        )
+        target = np.full(longitudes.shape, -1, dtype=np.int32)
+        target[inside] = lat_bin[inside] * len(self.lons) + lon_bin[inside]
+        return target
 
     def cell_metadata(self, slot: int) -> dict[str, object]:
         if not 0 <= slot < self.size:

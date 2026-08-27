@@ -21,6 +21,8 @@ from .era_products import (
     load_reanalysis_field,
     retrieve_reanalysis_field,
 )
+from .grids import LambertConformalGrid, RegularLatLonGrid
+from .narr_products import load_narr_monthly_field
 from .pipeline import (
     MONTH_LABELS,
     MONTH_ORDER,
@@ -36,12 +38,12 @@ from .products import (
     tiles_for_grid,
 )
 from .reanalysis_checkpoints import (
-    MODEL_TIME,
     REFERENCE_PRODUCT,
     aggregation,
     checkpoint_path,
     error_sign,
     load_available_checkpoints,
+    model_time,
     write_month_checkpoint,
 )
 from .reanalysis_config import (
@@ -176,7 +178,11 @@ def _initialize_worker(
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     _WORKER_CONFIG = config
-    _WORKER_CDS_CLIENT = authenticated_cds_client()
+    _WORKER_CDS_CLIENT = (
+        authenticated_cds_client()
+        if any(spec.access_backend == "cds" for spec in config.model_specs)
+        else None
+    )
     _WORKER_MAPPINGS = {}
     _WORKER_ARCHIVE_TILES = {}
     for spec in config.model_specs:
@@ -215,27 +221,46 @@ def _load_monthly_model_fields(
     days: tuple[date, ...],
     directory: Path,
 ) -> dict[str, MonthlyModelField]:
-    if _WORKER_CONFIG is None or _WORKER_CDS_CLIENT is None:
-        raise RuntimeError("worker CDS access was not initialized")
+    if _WORKER_CONFIG is None:
+        raise RuntimeError("worker model access was not initialized")
     fields: dict[str, MonthlyModelField] = {}
     for spec in specs:
         if _WORKER_CDS_SEMAPHORE is None:
-            raise RuntimeError("worker CDS semaphore was not initialized")
+            raise RuntimeError("worker model-access semaphore was not initialized")
         with _WORKER_CDS_SEMAPHORE:
-            path = retrieve_reanalysis_field(
-                _WORKER_CDS_CLIENT,
-                spec,
-                days,
-                _WORKER_CONFIG,
-                directory,
-                retries=_WORKER_CONFIG.retries,
-            )
-        fields[spec.model_id] = load_reanalysis_field(
-            path,
-            spec,
-            _WORKER_CONFIG.target_grid(spec.model_id),
-            days,
-        )
+            grid = _WORKER_CONFIG.target_grid(spec.model_id)
+            if spec.access_backend == "cds":
+                if _WORKER_CDS_CLIENT is None or not isinstance(
+                    grid, RegularLatLonGrid
+                ):
+                    raise RuntimeError("CDS model access was not initialized")
+                path = retrieve_reanalysis_field(
+                    _WORKER_CDS_CLIENT,
+                    spec,
+                    days,
+                    _WORKER_CONFIG,
+                    directory,
+                    retries=_WORKER_CONFIG.retries,
+                )
+                fields[spec.model_id] = load_reanalysis_field(
+                    path,
+                    spec,
+                    grid,
+                    days,
+                )
+            elif spec.access_backend == "noaa_psl_opendap":
+                if not isinstance(grid, LambertConformalGrid):
+                    raise RuntimeError("NARR requires its native Lambert grid")
+                fields[spec.model_id] = load_narr_monthly_field(
+                    spec,
+                    grid,
+                    days,
+                    retries=_WORKER_CONFIG.retries,
+                )
+            else:
+                raise ValueError(
+                    f"unsupported model access backend: {spec.access_backend}"
+                )
     return fields
 
 
@@ -263,7 +288,7 @@ def _process_month(
     days = month_dates(year, month)
     label = f"{year:04d}-{month:02d}"
     with tempfile.TemporaryDirectory(
-        prefix=f"era-modis-{label}-"
+        prefix=f"reanalysis-modis-{label}-"
     ) as temporary:
         temporary_path = Path(temporary)
         model_fields = _load_monthly_model_fields(specs, days, temporary_path)
@@ -345,7 +370,11 @@ def _process_month(
 
 def preflight(config: ReanalysisRunConfig) -> None:
     config.validate()
-    client = authenticated_cds_client()
+    client = (
+        authenticated_cds_client()
+        if any(spec.access_backend == "cds" for spec in config.model_specs)
+        else None
+    )
     if len(config.dates) != sum(
         calendar.monthrange(year, month)[1]
         for year, month in config.calendar_months
@@ -376,20 +405,38 @@ def preflight(config: ReanalysisRunConfig) -> None:
     with tempfile.TemporaryDirectory(prefix="era-modis-preflight-") as temporary:
         directory = Path(temporary)
         for spec in config.model_specs:
-            path = retrieve_reanalysis_field(
-                client,
-                spec,
-                (sample_day,),
-                config,
-                directory,
-                retries=config.retries,
-            )
-            field = load_reanalysis_field(
-                path,
-                spec,
-                config.target_grid(spec.model_id),
-                (sample_day,),
-            )
+            grid = config.target_grid(spec.model_id)
+            if spec.access_backend == "cds":
+                if client is None or not isinstance(grid, RegularLatLonGrid):
+                    raise RuntimeError("CDS preflight access was not initialized")
+                path = retrieve_reanalysis_field(
+                    client,
+                    spec,
+                    (sample_day,),
+                    config,
+                    directory,
+                    retries=config.retries,
+                )
+                field = load_reanalysis_field(
+                    path,
+                    spec,
+                    grid,
+                    (sample_day,),
+                )
+            elif spec.access_backend == "noaa_psl_opendap":
+                if not isinstance(grid, LambertConformalGrid):
+                    raise RuntimeError("NARR requires its native Lambert grid")
+                field = load_narr_monthly_field(
+                    spec,
+                    grid,
+                    (sample_day,),
+                    retries=config.retries,
+                    validate_coordinates=True,
+                )
+            else:
+                raise ValueError(
+                    f"unsupported model access backend: {spec.access_backend}"
+                )
             if field.values.shape != (1, *config.target_grid(spec.model_id).shape):
                 raise ValueError(
                     f"unexpected {spec.display_name} preflight array shape"
@@ -400,13 +447,13 @@ def preflight(config: ReanalysisRunConfig) -> None:
                 )
     grid_summary = ", ".join(
         f"{spec.display_name}={config.target_grid(spec.model_id).size} cells "
-        f"at {spec.longitude_step:g} degrees "
+        f"at {config.target_grid(spec.model_id).resolution_label} "
         f"({eligible_cells[spec.model_id]} can meet archive support)"
         for spec in config.model_specs
     )
     method_summary = ", ".join(
         (
-            f"{spec.display_name} direct snow_cover"
+            f"{spec.display_name} direct snow cover"
             if spec.fsca_method == "direct_snow_cover"
             else f"{spec.display_name} diagnosed from snow depth+density"
         )
@@ -564,7 +611,7 @@ def _metadata_row(
         "error_sign": error_sign(spec),
         "model_product": spec.product_description,
         "model_variable": spec.variable,
-        "model_time": MODEL_TIME,
+        "model_time": model_time(spec),
         "reference_product": REFERENCE_PRODUCT,
         "aggregation": aggregation(spec),
     }

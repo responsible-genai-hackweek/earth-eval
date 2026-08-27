@@ -51,20 +51,18 @@ class TileMapping:
 
 
 def _projected_target_bounds(grid: SpatialGrid) -> tuple[float, float, float, float]:
-    lon_edges = grid.lon_edges
-    lat_edges = grid.lat_edges
-    lons = np.linspace(lon_edges[0], lon_edges[-1], 121)
-    lats = np.linspace(lat_edges[0], lat_edges[-1], 121)
+    west, south, east, north = grid.geographic_bounds
+    lons = np.linspace(west, east, 121)
+    lats = np.linspace(south, north, 121)
     lon_mesh, lat_mesh = np.meshgrid(lons, lats)
     x, y = TO_SINUSOIDAL.transform(lon_mesh, lat_mesh)
     return float(x.min()), float(y.min()), float(x.max()), float(y.max())
 
 
 def tiles_for_grid(grid: SpatialGrid) -> tuple[str, ...]:
-    lon_edges = grid.lon_edges
-    lat_edges = grid.lat_edges
-    lons = np.linspace(lon_edges[0], lon_edges[-1], 121)
-    lats = np.linspace(lat_edges[0], lat_edges[-1], 121)
+    west, south, east, north = grid.geographic_bounds
+    lons = np.linspace(west, east, 121)
+    lats = np.linspace(south, north, 121)
     lon_mesh, lat_mesh = np.meshgrid(lons, lats)
     x, y = TO_SINUSOIDAL.transform(lon_mesh, lat_mesh)
     h = np.floor((x - MODIS_X_MIN) / MODIS_TILE_SIZE).astype(int)
@@ -167,22 +165,7 @@ def build_tile_mapping(
     row_start, row_stop = int(rows[0]), int(rows[-1] + 1)
     xx, yy = np.meshgrid(x[col_start:col_stop], y[row_start:row_stop])
     lon, lat = TO_GEOGRAPHIC.transform(xx, yy)
-    lon_edges = grid.lon_edges
-    lat_edges = grid.lat_edges
-    lon_bin = np.floor((lon - lon_edges[0]) / (lon_edges[1] - lon_edges[0])).astype(int)
-    lat_bin = np.floor((lat - lat_edges[0]) / (lat_edges[1] - lat_edges[0])).astype(int)
-    inside = (
-        (lon >= lon_edges[0])
-        & (lon < lon_edges[-1])
-        & (lat >= lat_edges[0])
-        & (lat < lat_edges[-1])
-        & (lon_bin >= 0)
-        & (lon_bin < len(grid.lons))
-        & (lat_bin >= 0)
-        & (lat_bin < len(grid.lats))
-    )
-    target_index = np.full(lon.shape, -1, dtype=np.int32)
-    target_index[inside] = lat_bin[inside] * len(grid.lons) + lon_bin[inside]
+    target_index = grid.assign_points(lon, lat)
     expected = np.bincount(
         target_index[target_index >= 0], minlength=grid.size
     ).astype(np.int64)

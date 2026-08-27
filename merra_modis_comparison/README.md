@@ -1,10 +1,10 @@
 # Reanalysis / MODSCAG fractional snow-cover comparison
 
-This project evaluates MERRA-2, ERA5, and ERA5-Land fractional snow-covered
-area (fSCA) against the daily 500 m STC-MODSCAG product over Colorado. It
-provides resumable, parallel pipelines for water years 2010–2023. The completed
-MERRA-2 analysis also includes spatial and elevation-dependent error analyses,
-wet/dry-year composites, and cellwise significance tests.
+This project evaluates MERRA-2, ERA5, ERA5-Land, and NARR fractional
+snow-covered area (fSCA) against the daily 500 m STC-MODSCAG product over
+Colorado. It provides resumable, parallel pipelines for water years 2010–2023.
+The completed MERRA-2 analysis also includes spatial and elevation-dependent
+error analyses, wet/dry-year composites, and cellwise significance tests.
 
 The configured domain contains 72 MERRA-2 cells: eight longitude columns by
 nine latitude rows. Cell centers fall within 109–104°W and 37–41°N; because
@@ -36,6 +36,14 @@ Sixteen monthly workers share eight MODSCAG FTP slots and four CDS retrieval
 slots. Each day's MODSCAG downloads are reused for both grids. Monthly CDS
 subsets and daily MODSCAG files are temporary; only monthly sufficient
 statistics and complete final CSVs persist.
+
+NARR uses the same comparison contract on 185 center-selected cells of its
+native 32.463 km AWIPS Grid 221 Lambert conformal grid. Its public NOAA PSL
+annual files provide direct `snowc` at the exact 15:00 UTC analysis. MODSCAG
+pixel centers are projected into the NARR coordinate system before cell
+assignment; NARR is never interpolated to MODIS resolution. Public OPeNDAP
+subsets remain in memory, so only monthly sufficient-statistic checkpoints and
+final CSVs persist.
 
 ## Key results
 
@@ -92,6 +100,21 @@ hourly field at 15:00 UTC, whereas the selected MERRA-2 value is the
 15:00–16:00 UTC average stamped 15:30 UTC. Product and timing metadata remain
 explicit in every checkpoint and output.
 
+### NARR
+
+NARR is read from the NOAA PSL annual monolevel `snowc.YYYY.nc` files through
+public OPeNDAP. `snowc` is a direct 0–1 snow-cover fraction available every
+three hours; the pipeline selects the exact 15:00 UTC analysis for every
+calendar date. It retains the product's native 349 × 277 AWIPS Grid 221 Lambert
+conformal representation at 32.463 km rather than treating it as a regular
+latitude/longitude grid.
+
+The requested center-selection domain contains 185 NARR cells. Their native
+row and column indices form stable identifiers such as `NARR_y098_x168`.
+MODSCAG coverage can theoretically meet the 80% archive-support threshold for
+183 cells; the two affected southeastern cells remain unpaired rather than
+being extrapolated.
+
 ### MODSCAG and regridding
 
 For each daily MODSCAG tile, the pipeline:
@@ -114,7 +137,10 @@ The shared mapping and reduction are implemented in
 80% support masks are in
 [`pipeline.py`](src/merra_modis_comparison/pipeline.py) for MERRA-2 and
 [`reanalysis_pipeline.py`](src/merra_modis_comparison/reanalysis_pipeline.py)
-for ERA.
+for ERA and NARR. The latter separates the product-access backend from the
+target-grid adapter, allowing regular latitude/longitude CDS products and
+projected native-grid products to share the same aggregation, sufficient
+statistics, checkpointing, and finalization code.
 
 Run the one-day diagnostic to see the native and target grids:
 
@@ -167,6 +193,8 @@ key: <PERSONAL-ACCESS-TOKEN>
 
 `CDSAPI_KEY` can be used instead. The key is read only by `cdsapi`; it is never
 written to repository files or passed as a command-line argument.
+
+NARR access through NOAA PSL OPeNDAP is public and needs no account or token.
 
 The included `.zsh` launchers currently point to the local tested interpreter:
 `/Users/clintonalden/miniconda3/envs/env1/bin/python`. Replace that path with the
@@ -259,6 +287,42 @@ ERA5 month is retained if only ERA5-Land needs to resume. Set
 new months at the limit, finishes in-flight tasks, and resumes from validated
 monthly CSVs on the next identical command.
 
+## Run NARR
+
+NARR requires no additional authentication. Validate the public product,
+native projected coordinates, exact 15Z timing, 0–1 units, selected cells, and
+MODSCAG support before the campaign:
+
+```bash
+/Users/clintonalden/miniconda3/envs/env1/bin/python \
+  -m merra_modis_comparison.reanalysis_cli \
+  --models narr \
+  --start-water-year 2010 --end-water-year 2023 \
+  --preflight-only
+```
+
+Run the full comparison with:
+
+```bash
+./run_narr_to_completion.zsh
+```
+
+Equivalent command:
+
+```bash
+/Users/clintonalden/miniconda3/envs/env1/bin/python \
+  -m merra_modis_comparison.reanalysis_cli \
+  --models narr \
+  --start-water-year 2010 --end-water-year 2023 \
+  --west -109 --east -104 --south 37 --north 41 \
+  --workers 16 --ftp-connections 8 --model-connections 4
+```
+
+Each monthly worker retrieves only the 15Z NARR source window needed for the
+Colorado cells. The task keeps that array and daily MODSCAG granules temporary,
+atomically saves the same sufficient statistics used by ERA, and can resume by
+validating and skipping complete model-month checkpoints.
+
 For the rectangular center-selection domain, 354 of 357 ERA5 cells and 2,079
 of 2,091 ERA5-Land cells can theoretically meet 80% support from the historical
 MODSCAG archive. The southeastern edge intersects unavailable tile `h10v05`;
@@ -287,13 +351,15 @@ below 0.10 (10%). The launcher writes:
 - `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`
 - `results/era5_land_wy2023_apr_may_elevation_dependency.png`
 
-The ERA runner is adapter-based. A new regular latitude/longitude CDS product
-starts with a reviewed `ReanalysisModelSpec` in
-[`reanalysis_config.py`](src/merra_modis_comparison/reanalysis_config.py); its
-dataset-specific request keys and NetCDF variable/coordinate conventions must
-then pass the same preflight and contract tests. A different grid type, time
-operator, or fSCA definition is a scientific extension, not a registry-only
-change.
+The shared reanalysis runner is adapter-based. A new product starts with a
+reviewed `ReanalysisModelSpec` in
+[`reanalysis_config.py`](src/merra_modis_comparison/reanalysis_config.py), an
+access loader, and either an existing target-grid adapter or a tested new one.
+CDS regular latitude/longitude and NOAA native Lambert conformal products now
+share the same MODSCAG reduction and statistics engine. Product-specific
+request keys, coordinates, units, timestamps, and fSCA meaning must pass the
+same preflight and contract tests; a new time operator or fSCA definition
+remains a scientific extension, not a registry-only change.
 
 ## Derived analyses
 
@@ -373,10 +439,12 @@ of freedom for each cell.
 | `results/era5_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | ERA5 monthly/seasonal domain and 0.25° cell statistics |
 | `results/era5_land_modis_water_year_2010_2023_monthly_checkpoints/` | ERA5-Land resumable monthly sufficient-statistic CSVs |
 | `results/era5_land_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | ERA5-Land monthly/seasonal domain and 0.1° cell statistics |
+| `results/narr_modis_water_year_2010_2023_monthly_checkpoints/` | NARR resumable monthly sufficient-statistic CSVs |
+| `results/narr_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | NARR monthly/seasonal domain and native-cell statistics |
 | `results/era5_land_wy2023_nov_may_spatial_bias_mae.png` | ERA5-Land WY2023 November–May NMB and NMAE maps; paired MODSCAG fSCA ≥ 5% |
 | `results/era5_land_wy2023_apr_may_elevation_dependency.png` | ERA5-Land April–May 2023 NMB, NMAE, and paired MODSCAG fSCA versus cell-mean elevation; MODSCAG fSCA ≥ 0.10 |
 
-Daily MODSCAG granules and model subsets are never cached. The ERA monthly
+Daily MODSCAG granules and model subsets are never cached. The reanalysis monthly
 checkpoints also retain weighted MODSCAG and error sums, allowing bias, MAE,
 MODSCAG mean fSCA, normalized mean bias, and normalized MAE to be rebuilt
 without raw model fSCA. Final CSVs and figures are written atomically only after
@@ -399,9 +467,10 @@ invoked explicitly as `$snow-hydrology-fsca-evaluation`.
 python -m pytest -q
 ```
 
-The current suite contains 50 tests covering configuration, model-grid
-construction, CDS request and NetCDF handling, regridding, statistics,
-checkpoint validation, plotting, composites, and significance calculations.
+The current suite contains 56 tests covering configuration, regular and native
+projected model-grid construction, CDS and NOAA product handling, regridding,
+statistics, checkpoint validation, plotting, composites, and significance
+calculations.
 
 ## Research-plan-implement record
 
@@ -410,3 +479,5 @@ checkpoint validation, plotting, composites, and significance calculations.
 - [`plan/MULTIYEAR_2010_2023_PLAN.md`](plan/MULTIYEAR_2010_2023_PLAN.md)
 - [`research/ERA5_PRODUCT_NOTES.md`](research/ERA5_PRODUCT_NOTES.md)
 - [`plan/ERA5_ERA5_LAND_PLAN.md`](plan/ERA5_ERA5_LAND_PLAN.md)
+- [`research/NARR_PRODUCT_NOTES.md`](research/NARR_PRODUCT_NOTES.md)
+- [`plan/NARR_EXTENSION_PLAN.md`](plan/NARR_EXTENSION_PLAN.md)

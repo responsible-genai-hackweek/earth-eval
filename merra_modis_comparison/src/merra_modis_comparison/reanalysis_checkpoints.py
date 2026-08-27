@@ -23,6 +23,21 @@ from .reanalysis_metrics import (
 CHECKPOINT_SCHEMA = "2"
 REFERENCE_PRODUCT = "STC_MODSCGDRF_HIST_v1:snow_fraction"
 MODEL_TIME = "hourly field at 15:00 UTC"
+LEGACY_MODEL_SPEC_FIELDS = (
+    "model_id",
+    "display_name",
+    "dataset_id",
+    "variable",
+    "cds_variables",
+    "source_variable_candidates",
+    "fsca_method",
+    "longitude_step",
+    "latitude_step",
+    "time_hour_utc",
+    "product_type",
+    "product_description",
+    "doi",
+)
 
 DERIVED_METRIC_FIELDS = [
     "bias_pp",
@@ -67,23 +82,38 @@ def error_sign(spec: ReanalysisModelSpec) -> str:
 
 
 def aggregation(spec: ReanalysisModelSpec) -> str:
+    if spec.grid_kind == "lambert_conformal":
+        return f"equal_area_MODIS_pixel_center_to_{spec.model_id}_native_grid"
     return f"equal_area_MODIS_pixel_center_to_{spec.model_id}_CDS_grid"
+
+
+def model_time(spec: ReanalysisModelSpec) -> str:
+    if spec.model_id == "narr":
+        return "3-hourly analysis field at 15:00 UTC"
+    return MODEL_TIME
 
 
 def config_fingerprint(
     config: ReanalysisRunConfig, spec: ReanalysisModelSpec
 ) -> str:
     grid = config.target_grid(spec.model_id)
+    if spec.access_backend == "cds":
+        model_contract = {
+            name: getattr(spec, name) for name in LEGACY_MODEL_SPEC_FIELDS
+        }
+        grid_contract = {"lons": grid.lons, "lats": grid.lats}
+    else:
+        model_contract = asdict(spec)
+        grid_contract = {"grid": grid.fingerprint_payload}
     contract = {
         "schema": CHECKPOINT_SCHEMA,
-        "model": asdict(spec),
+        "model": model_contract,
         "west": config.west,
         "east": config.east,
         "south": config.south,
         "north": config.north,
         "support_threshold": config.support_threshold,
-        "lons": grid.lons,
-        "lats": grid.lats,
+        **grid_contract,
         "reference_product": REFERENCE_PRODUCT,
         "error_sign": error_sign(spec),
         "aggregation": aggregation(spec),
@@ -139,7 +169,7 @@ def _row_for_slot(
             "error_sign": error_sign(spec),
             "model_product": spec.product_description,
             "model_variable": spec.variable,
-            "model_time": MODEL_TIME,
+            "model_time": model_time(spec),
             "reference_product": REFERENCE_PRODUCT,
             "aggregation": aggregation(spec),
         }
@@ -215,7 +245,7 @@ def load_month_checkpoint(
             "error_sign": error_sign(spec),
             "model_product": spec.product_description,
             "model_variable": spec.variable,
-            "model_time": MODEL_TIME,
+            "model_time": model_time(spec),
             "reference_product": REFERENCE_PRODUCT,
             "aggregation": aggregation(spec),
         }

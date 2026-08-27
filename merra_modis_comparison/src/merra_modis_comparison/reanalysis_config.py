@@ -3,7 +3,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from .grids import RegularLatLonGrid
+from .grids import LambertConformalGrid, RegularLatLonGrid, SpatialGrid
+
+
+@dataclass(frozen=True)
+class LambertGridDefinition:
+    x_origin: float
+    y_origin: float
+    x_step: float
+    y_step: float
+    full_width: int
+    full_height: int
+    latitude_of_projection_origin: float
+    longitude_of_central_meridian: float
+    standard_parallel: tuple[float, float]
+    false_easting: float
+    false_northing: float
+    earth_radius: float
 
 
 @dataclass(frozen=True)
@@ -21,19 +37,54 @@ class ReanalysisModelSpec:
     product_type: str | None
     product_description: str
     doi: str
+    access_backend: str = "cds"
+    grid_kind: str = "regular_latlon"
+    source_url_template: str | None = None
+    lambert_grid: LambertGridDefinition | None = None
 
     def target_grid(
         self, west: float, east: float, south: float, north: float
-    ) -> RegularLatLonGrid:
-        return RegularLatLonGrid.from_domain(
-            model_id=self.model_id,
-            west=west,
-            east=east,
-            south=south,
-            north=north,
-            longitude_step=self.longitude_step,
-            latitude_step=self.latitude_step,
-        )
+    ) -> SpatialGrid:
+        if self.grid_kind == "regular_latlon":
+            return RegularLatLonGrid.from_domain(
+                model_id=self.model_id,
+                west=west,
+                east=east,
+                south=south,
+                north=north,
+                longitude_step=self.longitude_step,
+                latitude_step=self.latitude_step,
+            )
+        if self.grid_kind == "lambert_conformal":
+            if self.lambert_grid is None:
+                raise ValueError(
+                    f"{self.display_name} lacks a Lambert-grid definition"
+                )
+            definition = self.lambert_grid
+            return LambertConformalGrid.from_domain(
+                model_id=self.model_id,
+                west=west,
+                east=east,
+                south=south,
+                north=north,
+                x_origin=definition.x_origin,
+                y_origin=definition.y_origin,
+                x_step=definition.x_step,
+                y_step=definition.y_step,
+                full_width=definition.full_width,
+                full_height=definition.full_height,
+                latitude_of_projection_origin=(
+                    definition.latitude_of_projection_origin
+                ),
+                longitude_of_central_meridian=(
+                    definition.longitude_of_central_meridian
+                ),
+                standard_parallel=definition.standard_parallel,
+                false_easting=definition.false_easting,
+                false_northing=definition.false_northing,
+                earth_radius=definition.earth_radius,
+            )
+        raise ValueError(f"unknown grid kind: {self.grid_kind}")
 
 
 MODEL_SPECS = {
@@ -76,6 +127,44 @@ MODEL_SPECS = {
             "CDS regular 0.1-degree grid"
         ),
         doi="10.24381/cds.e2161bac",
+    ),
+    "narr": ReanalysisModelSpec(
+        model_id="narr",
+        display_name="NARR",
+        dataset_id="Datasets/NARR/monolevel/snowc.{year}.nc",
+        variable="snowc",
+        cds_variables=(),
+        source_variable_candidates=(("snowc",),),
+        fsca_method="direct_snow_cover",
+        longitude_step=32_463.0,
+        latitude_step=32_463.0,
+        time_hour_utc=15,
+        product_type=None,
+        product_description=(
+            "NOAA PSL NARR:snowc[15:00Z]; direct snow-cover fraction; "
+            "native AWIPS Grid 221 Lambert conformal grid"
+        ),
+        doi="gov.noaa.ncdc:C00618",
+        access_backend="noaa_psl_opendap",
+        grid_kind="lambert_conformal",
+        source_url_template=(
+            "https://psl.noaa.gov/thredds/dodsC/"
+            "Datasets/NARR/monolevel/snowc.{year}.nc"
+        ),
+        lambert_grid=LambertGridDefinition(
+            x_origin=0.0,
+            y_origin=0.0,
+            x_step=32_463.0,
+            y_step=32_463.0,
+            full_width=349,
+            full_height=277,
+            latitude_of_projection_origin=50.0,
+            longitude_of_central_meridian=-107.0,
+            standard_parallel=(50.0, 50.0),
+            false_easting=5_632_642.22547,
+            false_northing=4_612_545.65137,
+            earth_radius=6_371_200.0,
+        ),
     ),
 }
 
@@ -134,12 +223,30 @@ class ReanalysisRunConfig:
         for spec in self.model_specs:
             if spec.time_hour_utc != 15:
                 raise ValueError("the reviewed daily contract requires 15:00 UTC")
+            if spec.access_backend not in {"cds", "noaa_psl_opendap"}:
+                raise ValueError(
+                    f"unsupported access backend for {spec.display_name}: "
+                    f"{spec.access_backend}"
+                )
+            if spec.grid_kind not in {"regular_latlon", "lambert_conformal"}:
+                raise ValueError(
+                    f"unsupported grid kind for {spec.display_name}: {spec.grid_kind}"
+                )
+            if spec.access_backend == "cds" and not spec.cds_variables:
+                raise ValueError(f"{spec.display_name} CDS variables cannot be empty")
+            if (
+                spec.access_backend == "noaa_psl_opendap"
+                and spec.source_url_template is None
+            ):
+                raise ValueError(
+                    f"{spec.display_name} NOAA OPeNDAP URL cannot be empty"
+                )
 
     @property
     def model_specs(self) -> tuple[ReanalysisModelSpec, ...]:
         return tuple(MODEL_SPECS[model_id] for model_id in self.model_ids)
 
-    def target_grid(self, model_id: str) -> RegularLatLonGrid:
+    def target_grid(self, model_id: str) -> SpatialGrid:
         try:
             spec = MODEL_SPECS[model_id]
         except KeyError as exc:

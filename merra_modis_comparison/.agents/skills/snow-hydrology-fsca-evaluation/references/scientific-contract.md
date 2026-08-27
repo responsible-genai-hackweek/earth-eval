@@ -14,6 +14,9 @@ equivalent to the established analysis.
 - ERA5 CDS grid: 21 longitude columns × 17 latitude rows = 357 cells at 0.25°.
 - ERA5-Land CDS grid: 51 longitude columns × 41 latitude rows = 2,091 cells at
   0.1°.
+- NARR native AWIPS Grid 221: 185 center-selected cells at 32.463 km in its
+  Lambert conformal projection. The selected cells are not a rectangular
+  latitude/longitude array.
 
 The end year is deliberately 2023 because the selected historical MODSCAG v1
 record ends on 2023-09-30. Extending later requires a new product-continuity
@@ -42,10 +45,13 @@ Supported model fields:
   alone or claim ERA5 archives `snow_cover` directly.
 - ERA5-Land CDS dataset `reanalysis-era5-land`, variable `snow_cover`, hourly
   15:00 UTC field, on the regular 0.1° CDS distribution grid.
+- NOAA PSL NARR monolevel annual file, variable `snowc`, stored as a 0–1
+  fraction at the exact 15:00 UTC analysis, on the native 32.463 km AWIPS Grid
+  221 Lambert conformal grid.
 
 Pair records by calendar date. MERRA is an hourly average stamped 15:30 UTC;
-the ERA fields are at 15:00 UTC. Do not substitute a daily mean or a different
-hour without treating it as a new experiment.
+the ERA and NARR fields are at 15:00 UTC. Do not substitute a daily mean or a
+different hour without treating it as a new experiment.
 
 ## Regridding
 
@@ -53,7 +59,8 @@ hour without treating it as a new experiment.
 2. Transform each 500 m pixel center from MODIS sinusoidal coordinates to
    longitude and latitude.
 3. Bin the center into one cell of the selected model product grid using its
-   target-cell edges.
+   target-cell edges in that grid's native coordinate system. NARR membership
+   is calculated after projection into its Lambert conformal coordinates.
 4. Accept `snow_fraction <= 100`; values above 100 are fill.
 5. Compute the cell reference as `sum(snow_fraction / 100) / valid_count`.
 6. Compute support as `valid_count / expected_count` and mask support below 0.8.

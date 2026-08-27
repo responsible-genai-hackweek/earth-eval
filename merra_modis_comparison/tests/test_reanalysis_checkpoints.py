@@ -62,3 +62,23 @@ def test_reanalysis_checkpoint_round_trip_and_contract_validation(tmp_path):
     )
     with pytest.raises(InvalidReanalysisCheckpoint, match="configuration differs"):
         load_month_checkpoint(path, 2022, 10, changed, spec)
+
+
+def test_narr_checkpoint_round_trip_uses_native_cell_identity(tmp_path):
+    config = ReanalysisRunConfig(
+        start_water_year=2023,
+        end_water_year=2023,
+        model_ids=("narr",),
+    )
+    spec = MODEL_SPECS["narr"]
+    grid = config.target_grid("narr")
+    stats = _complete_month(config, "narr", 2022, 10)
+    path = tmp_path / "2022-10.csv"
+
+    write_month_checkpoint(stats, 2022, 10, config, spec, path)
+    loaded = load_month_checkpoint(path, 2022, 10, config, spec)
+
+    assert grid.size == 185
+    assert grid.cell_metadata(0)["cell_id"].startswith("NARR_y")
+    for name in stats.__dataclass_fields__:
+        assert np.array_equal(getattr(loaded, name), getattr(stats, name))

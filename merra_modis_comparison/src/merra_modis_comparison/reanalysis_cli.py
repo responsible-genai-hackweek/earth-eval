@@ -26,8 +26,8 @@ from .reanalysis_pipeline import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Compare ERA5 diagnosed and/or ERA5-Land direct 15Z snow cover with daily "
-            "STC-MODSCAG on each model's CDS product grid"
+            "Compare selected 15Z reanalysis snow-cover products with daily "
+            "STC-MODSCAG on each product's native distribution grid"
         )
     )
     parser.add_argument(
@@ -56,10 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="shared MODSCAG FTP connection limit (default: 8; maximum: 9)",
     )
     parser.add_argument(
+        "--model-connections",
         "--cds-connections",
+        dest="cds_connections",
         type=int,
         default=4,
-        help="maximum concurrent monthly CDS retrievals (default: 4)",
+        help="maximum concurrent remote model requests (default: 4)",
     )
     parser.add_argument("--support-threshold", type=float, default=0.8)
     parser.add_argument("--retries", type=int, default=4)

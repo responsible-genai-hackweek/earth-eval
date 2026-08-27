@@ -1,6 +1,6 @@
 ---
 name: snow-hydrology-fsca-evaluation
-description: Reproduce, audit, interpret, or extend the Colorado daily MERRA-2, ERA5, or ERA5-Land versus STC-MODSCAG fractional snow-covered area evaluation. Use for product and time matching, MODIS-to-model-grid aggregation, checkpointed execution, bias metrics, wet/dry composites, elevation analysis, cellwise significance tests, or related figures in this repository. Do not carry these choices to unrelated variables or domains without revisiting the scientific contract.
+description: Reproduce, audit, interpret, or extend the Colorado daily MERRA-2, ERA5, ERA5-Land, or NARR versus STC-MODSCAG fractional snow-covered area evaluation. Use for product and time matching, MODIS-to-model-grid aggregation, checkpointed execution, bias metrics, wet/dry composites, elevation analysis, cellwise significance tests, or related figures in this repository. Do not carry these choices to unrelated variables or domains without revisiting the scientific contract.
 ---
 
 # Snow Hydrology fSCA Evaluation
@@ -29,7 +29,8 @@ checkpoint metadata.
 - Compare daily STC-MODSCAG `snow_fraction` with the reviewed model field:
   MERRA-2 `FRSNO` at index 15 (15:00–16:00 UTC), ERA5 fSCA diagnosed from its
   hourly 15:00 UTC `snow_depth` and `snow_density`, or the ERA5-Land hourly
-  `snow_cover` field at 15:00 UTC.
+  `snow_cover` field at 15:00 UTC, or NARR `snowc` at the exact 15:00 UTC
+  analysis.
 - Aggregate the equal-area 500 m MODSCAG pixels to the selected model product
   grid. Do not interpolate a model down to MODIS resolution and call the
   resulting samples independent.
