@@ -53,6 +53,14 @@ def _style(ax) -> None:
     ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=0)
 
 
+def _titles(ax, title: str, subtitle: str) -> None:
+    """Place title and subtitle above the axes without letting them collide."""
+    ax.text(0.0, 1.16, title, transform=ax.transAxes, color=INK,
+            fontsize=13, fontweight="bold", va="top", ha="left")
+    ax.text(0.0, 1.055, subtitle, transform=ax.transAxes, color=INK_SECONDARY,
+            fontsize=9.5, va="top", ha="left")
+
+
 def save(fig, path: Path) -> Path:
     """Write a figure atomically so a failed render cannot replace a good one."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,9 +108,10 @@ def anomaly_bars(
     ax.axhline(mean, color=INK_MUTED, linewidth=1.2, linestyle=(0, (4, 3)), zorder=4)
     ax.annotate(
         f"{len(water_years)}-year mean  {mean:.3g} {unit}",
-        xy=(water_years[0], mean),
-        xytext=(0, 5),
+        xy=(max(water_years), mean),
+        xytext=(0, 6),
         textcoords="offset points",
+        ha="right",
         color=INK_SECONDARY,
         fontsize=8.5,
     )
@@ -114,10 +123,13 @@ def anomaly_bars(
         if not np.isfinite(values[i]):
             continue
         rank = int(ranks[i]) if np.isfinite(ranks[i]) else 0
-        ordinal = "lowest" if rank <= len(water_years) / 2 else "highest"
-        shown = rank if rank <= len(water_years) / 2 else len(water_years) - rank + 1
+        n = len(water_years)
+        end = "lowest" if rank <= n / 2 else "highest"
+        shown = rank if rank <= n / 2 else n - rank + 1
+        # rank 1 reads "lowest of 46", not "1st lowest of 46"
+        phrase = f"{end} of {n}" if shown == 1 else f"{_ordinal(shown)} {end} of {n}"
         ax.annotate(
-            f"WY{wy}\n{values[i]:.3g} {unit}\n{_ordinal(shown)} {ordinal} of {len(water_years)}",
+            f"WY{wy}\n{values[i]:.3g} {unit}\n{phrase}",
             xy=(wy, values[i]),
             xytext=(0, 9),
             textcoords="offset points",
@@ -130,11 +142,7 @@ def anomaly_bars(
     ax.set_xlabel("water year", color=INK_SECONDARY, fontsize=9.5)
     ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
-    ax.set_title(title, color=INK, fontsize=13, loc="left", pad=16, fontweight="medium")
-    ax.text(
-        0.0, 1.045, subtitle, transform=ax.transAxes,
-        color=INK_SECONDARY, fontsize=9.5, va="bottom",
-    )
+    _titles(ax, title, subtitle)
     return save(fig, path)
 
 
@@ -192,9 +200,7 @@ def trajectory(
                         "Jun", "Jul", "Aug", "Sep"])
     ax.set_xlim(0, 305)
     ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
-    ax.set_title(title, color=INK, fontsize=13, loc="left", pad=16, fontweight="medium")
-    ax.text(0.0, 1.045, subtitle, transform=ax.transAxes,
-            color=INK_SECONDARY, fontsize=9.5, va="bottom")
+    _titles(ax, title, subtitle)
     legend = ax.legend(frameon=False, fontsize=9, loc="upper left")
     for text in legend.get_texts():
         text.set_color(INK_SECONDARY)
@@ -248,9 +254,7 @@ def model_agreement_scatter(
     ax.set_xlim(0, n + 1)
     ax.set_ylim(0, n + 1)
     ax.set_aspect("equal")
-    ax.set_title(title, color=INK, fontsize=12.5, loc="left", pad=16, fontweight="medium")
-    ax.text(0.0, 1.045, subtitle, transform=ax.transAxes,
-            color=INK_SECONDARY, fontsize=9.5, va="bottom")
+    _titles(ax, title, subtitle)
     ax.annotate(
         f"Spearman rho = {rho:.3f}   p = {p_value:.1e}   n = {n}",
         xy=(0.03, 0.03), xycoords="axes fraction",

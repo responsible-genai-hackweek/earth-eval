@@ -1,0 +1,169 @@
+"""Build the final tables and figures from the daily checkpoints.
+
+Reads only checkpoints - no network. Everything it writes is derived from the
+domain-mean series, so the whole report can be rebuilt without refetching.
+"""
+
+from __future__ import annotations
+
+import csv
+import os
+from pathlib import Path
+
+import numpy as np
+
+from .figures import anomaly_bars, model_agreement_scatter, trajectory
+from .summarize import (
+    load_depth_series,
+    load_swe_series,
+    model_agreement,
+    ranked,
+    summarize_model,
+)
+
+__all__ = ["build_report"]
+
+FIELDS = (
+    ("april_first_swe_mm", "1 April SWE", "mm w.e."),
+    ("april_first_depth_m", "1 April snow depth", "m"),
+    ("peak_swe_mm", "peak SWE", "mm w.e."),
+    ("season_mean_swe_mm", "season-mean SWE", "mm w.e."),
+)
+
+TABLE_COLUMNS = (
+    "model", "water_year", "n_days",
+    "april_first_swe_mm", "april_first_swe_rank", "april_first_swe_anomaly",
+    "april_first_depth_m", "april_first_depth_rank",
+    "peak_swe_mm", "peak_day", "peak_swe_rank",
+    "season_mean_swe_mm", "season_mean_swe_rank",
+    "melt_out_date",
+)
+
+
+def _write_atomic(path: Path, header, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f".tmp{os.getpid()}")
+    with tmp.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(header)
+        writer.writerows(rows)
+        handle.flush()
+        os.fsync(handle.fileno())
+    tmp.replace(path)
+
+
+def build_report(
+    checkpoints: Path,
+    results: Path,
+    water_years: list[int],
+    feature_years: tuple[int, ...] = (2023, 2026),
+    complete_only: bool = True,
+) -> dict:
+    """Write the statistics table and every figure. Returns a summary dict."""
+    stats = {
+        model: summarize_model(checkpoints, model, water_years)
+        for model in ("era5", "merra2")
+    }
+    if complete_only:
+        # A part-built water year would rank spuriously low on peak and season
+        # mean, so only years with a full accumulation and melt season count.
+        stats = {
+            model: [s for s in rows if s.n_days >= 270] for model, rows in stats.items()
+        }
+
+    rows = []
+    for model, entries in stats.items():
+        tables = {name: ranked(entries, name) for name, _, _ in FIELDS}
+        for s in entries:
+            rows.append([
+                model, s.water_year, s.n_days,
+                f"{s.april_first_swe_mm:.4f}",
+                _rank(tables["april_first_swe_mm"], s.water_year),
+                f"{tables['april_first_swe_mm'][s.water_year][2]:.3f}",
+                f"{s.april_first_depth_m:.5f}",
+                _rank(tables["april_first_depth_m"], s.water_year),
+                f"{s.peak_swe_mm:.4f}",
+                s.peak_day.isoformat() if s.peak_day else "",
+                _rank(tables["peak_swe_mm"], s.water_year),
+                f"{s.season_mean_swe_mm:.4f}",
+                _rank(tables["season_mean_swe_mm"], s.water_year),
+                s.melt_out.isoformat() if s.melt_out else "",
+            ])
+    rows.sort(key=lambda r: (r[0], r[1]))
+    _write_atomic(results / "water_year_statistics.csv", TABLE_COLUMNS, rows)
+
+    era5_years = [s.water_year for s in stats["era5"]]
+    summary: dict = {"water_years": era5_years, "figures": []}
+
+    if era5_years:
+        swe = load_swe_series(checkpoints, "era5", era5_years)
+        depth = load_depth_series(checkpoints, "era5", era5_years)
+        span = f"WY{min(era5_years)}–WY{max(era5_years)}"
+
+        summary["figures"].append(str(anomaly_bars(
+            era5_years,
+            np.array([s.april_first_swe_mm for s in stats["era5"]]),
+            title="Colorado 1 April snow water equivalent, ERA5",
+            subtitle=f"Domain-mean over 72 MERRA-2 cells, {span}. "
+                     "Colour shows departure from the record mean.",
+            unit="mm w.e.",
+            highlight=feature_years,
+            path=results / "april_first_swe_by_water_year.png",
+        )))
+
+        summary["figures"].append(str(anomaly_bars(
+            era5_years,
+            np.array([s.april_first_depth_m for s in stats["era5"]]),
+            title="Colorado 1 April snow depth, ERA5",
+            subtitle=f"Grid-cell mean geometric depth, {span}. "
+                     "A sharper signal than SWE: the low year's snow was also less dense.",
+            unit="m",
+            highlight=feature_years,
+            path=results / "april_first_depth_by_water_year.png",
+        )))
+
+        summary["figures"].append(str(trajectory(
+            swe, era5_years, feature_years,
+            title="Colorado snowpack through the water year, ERA5",
+            subtitle=f"Daily domain-mean SWE against the {span} spread.",
+            unit="mm w.e.",
+            path=results / "daily_swe_trajectory.png",
+        )))
+
+    shared = sorted(
+        {s.water_year for s in stats["era5"]} & {s.water_year for s in stats["merra2"]}
+    )
+    if len(shared) >= 3:
+        rho, p, n = model_agreement(
+            [s for s in stats["era5"] if s.water_year in shared],
+            [s for s in stats["merra2"] if s.water_year in shared],
+            "peak_swe_mm",
+        )
+        summary["agreement_peak_swe"] = {"rho": rho, "p": p, "n": n}
+        summary["figures"].append(str(model_agreement_scatter(
+            shared,
+            np.array([s.peak_swe_mm for s in stats["era5"] if s.water_year in shared]),
+            np.array([s.peak_swe_mm for s in stats["merra2"] if s.water_year in shared]),
+            rho=rho, p_value=p,
+            title="Do the two reanalyses rank the years the same way?",
+            subtitle="Peak SWE rank, ERA5 versus MERRA-2. Ranks, not values: the "
+                     "models' magnitude ratio itself varies with snowpack depth.",
+            highlight=feature_years,
+            path=results / "model_rank_agreement.png",
+        )))
+
+    for name, label, unit in FIELDS:
+        table = ranked(stats["era5"], name)
+        for wy in feature_years:
+            if wy in table:
+                value, rank, anomaly = table[wy]
+                summary[f"era5_{name}_WY{wy}"] = {
+                    "value": value, "rank": rank, "of": len(table),
+                    "anomaly_sd": anomaly, "unit": unit, "label": label,
+                }
+    return summary
+
+
+def _rank(table, wy) -> str:
+    value = table.get(wy, (np.nan, np.nan, np.nan))[1]
+    return "" if not np.isfinite(value) else str(int(value))
