@@ -36,6 +36,7 @@ MIN_MODIS_FSCA_PCT = 5.0
 NORMALIZED_BIAS_LIMIT_PCT = 120.0
 NORMALIZED_MAE_LIMIT_PCT = 140.0
 ELEVATION_ANALYSIS_MONTHS = ("April 2023", "May 2023")
+ELEVATION_MIN_MODIS_FSCA_PCT = 10.0
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,7 @@ def reanalysis_normalized_metric_grid(
 def reanalysis_modis_fsca_grid(
     stats: ReanalysisStatsBlock,
     shape: tuple[int, int],
+    minimum_modis_fsca_pct: float | None = None,
 ) -> np.ndarray:
     """Return paired, pixel-day-weighted MODSCAG fSCA as percent by cell."""
 
@@ -151,6 +153,10 @@ def reanalysis_modis_fsca_grid(
         out=np.full(weights.shape, np.nan, dtype=np.float64),
         where=weights > 0,
     )
+    if minimum_modis_fsca_pct is not None:
+        if not 0 <= minimum_modis_fsca_pct <= 100:
+            raise ValueError("minimum MODSCAG fSCA must be between 0 and 100")
+        values[values < minimum_modis_fsca_pct] = np.nan
     return values.reshape(shape)
 
 
@@ -192,7 +198,10 @@ def write_reanalysis_elevation_dependency_plot(
         (
             "Normalized mean bias",
             reanalysis_normalized_metric_grid(
-                period_stats, "nmb_pct", grid.shape
+                period_stats,
+                "nmb_pct",
+                grid.shape,
+                minimum_modis_fsca_pct=ELEVATION_MIN_MODIS_FSCA_PCT,
             ).ravel(),
             "Normalized mean bias (%)",
             "#2166ac",
@@ -200,14 +209,21 @@ def write_reanalysis_elevation_dependency_plot(
         (
             "Normalized MAE",
             reanalysis_normalized_metric_grid(
-                period_stats, "nmae_pct", grid.shape
+                period_stats,
+                "nmae_pct",
+                grid.shape,
+                minimum_modis_fsca_pct=ELEVATION_MIN_MODIS_FSCA_PCT,
             ).ravel(),
             "Normalized mean absolute error (%)",
             "#b2182b",
         ),
         (
             "Mean MODSCAG fSCA",
-            reanalysis_modis_fsca_grid(period_stats, grid.shape).ravel(),
+            reanalysis_modis_fsca_grid(
+                period_stats,
+                grid.shape,
+                minimum_modis_fsca_pct=ELEVATION_MIN_MODIS_FSCA_PCT,
+            ).ravel(),
             "MODIS fractional snow-covered area (%)",
             "#238b45",
         ),
@@ -261,8 +277,8 @@ def write_reanalysis_elevation_dependency_plot(
         f"Elevation dependence of {spec.display_name} normalized snow-cover error\n"
         "Colorado, April–May 2023 aggregate; USGS 3DEP cell-mean "
         "elevation\n"
-        "Normalized metrics exclude paired MODSCAG fSCA < 5%; black line is "
-        "the OLS trend",
+        "All panels exclude paired MODSCAG fSCA < 10%; black line is the OLS "
+        "trend",
         fontsize=12.5,
     )
     _save_figure(figure, output)

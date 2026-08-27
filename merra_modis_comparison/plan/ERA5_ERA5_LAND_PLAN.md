@@ -84,7 +84,7 @@ Status: **completed 2026-08-26**
 - Output: `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`.
 - The companion elevation artifact merges only the April and May 2023
   sufficient-statistic checkpoints, then plots period-aggregate NMB, NMAE, and
-  paired MODSCAG fSCA against USGS 3DEP cell-mean elevation. NMB/NMAE use the
-  same 5% paired-MODSCAG mask and no daily or raw model field is reprocessed or
-  saved.
+  paired MODSCAG fSCA against USGS 3DEP cell-mean elevation. All three panels
+  exclude cells where aggregate paired MODSCAG fSCA is below 0.10 (10%). No
+  daily or raw model field is reprocessed or saved.
 - Output: `results/era5_land_wy2023_apr_may_elevation_dependency.png`.

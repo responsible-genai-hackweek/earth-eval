@@ -102,6 +102,20 @@ def test_reanalysis_modis_fsca_grid_uses_paired_pixel_day_weights():
     assert values.shape == grid.shape
     assert np.allclose(values, 50)
 
+    low_snow = ReanalysisStatsBlock.empty(grid.size)
+    update_reanalysis_stats(
+        low_snow,
+        np.full(grid.shape, 0.12),
+        np.full(grid.shape, 0.08),
+        np.full(grid.shape, 9),
+        np.full(grid.shape, 10),
+        np.full(grid.shape, 7),
+    )
+    masked = reanalysis_modis_fsca_grid(
+        low_snow, grid.shape, minimum_modis_fsca_pct=10
+    )
+    assert np.isnan(masked).all()
+
 
 def test_era5_land_fourteen_panel_spatial_plot(tmp_path):
     config = ReanalysisRunConfig(
