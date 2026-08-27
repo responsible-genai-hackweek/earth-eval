@@ -125,8 +125,8 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_swe_mm for s in stats["era5"]]),
-            title="Colorado 1 April Snow Water Equivalent, ERA5",
-            unit="Snow Water Equivalent (mm w.e.)",
+            title="Colorado April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
+            unit="Snow Water Equivalent (mm)",
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
         )))
@@ -134,7 +134,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_depth_m for s in stats["era5"]]),
-            title="Colorado 1 April Snow Depth, ERA5",
+            title="Colorado April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
             unit="Snow Depth (m)",
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
@@ -146,7 +146,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         # result.
         for field, label, unit, data, name in (
             ("peak_swe_mm", "Snow Water Equivalent",
-             "Snow Water Equivalent (mm w.e.)", swe, "spaghetti_swe.png"),
+             "Snow Water Equivalent (mm)", swe, "spaghetti_swe.png"),
             ("april_first_depth_m", "Snow Depth",
              "Snow Depth (m)", depth, "spaghetti_depth.png"),
         ):

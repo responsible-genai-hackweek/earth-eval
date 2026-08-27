@@ -40,7 +40,11 @@ sns.set_theme(
         "grid.linewidth": 0.8,
         "xtick.color": "#55554e",
         "ytick.color": "#55554e",
-        "font.size": 10,
+        "font.size": 12,
+        "axes.labelsize": 12.5,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "legend.fontsize": 11,
     },
 )
 
@@ -58,6 +62,13 @@ MERRA2_COLOUR = "#e07000"
 DRY_COLOUR = "#e07000"
 WET_COLOUR = "#1f6feb"
 MID_COLOUR = "#b9b9b4"
+
+#: Ranked shades within each pole, most extreme first. Stepping lightness
+#: rather than hue keeps each ramp reading as one family - these are degrees of
+#: the same thing, not separate identities - while staying separable enough to
+#: match a curve to a legend row.
+DRY_SHADES = ("#8f4500", "#e07000", "#f6ad5e")
+WET_SHADES = ("#123c86", "#1f6feb", "#7fadf6")
 
 INK = "#1b1b18"
 INK_SECONDARY = "#55554e"
@@ -84,7 +95,7 @@ def _titles(ax, title: str) -> None:
     edited without re-rendering and where a reader expects to find it.
     """
     ax.text(0.0, 1.08, title, transform=ax.transAxes, color=INK,
-            fontsize=12.5, fontweight="bold", va="top", ha="left")
+            fontsize=15, fontweight="bold", va="top", ha="left")
 
 
 #: When set, every saved figure is also appended to this multi-page document.
@@ -169,7 +180,7 @@ def anomaly_bars(
     label = ax.annotate(
         "Mean", xy=(max(water_years), mean), xytext=(0, 5),
         textcoords="offset points", ha="right", color=INK,
-        fontsize=8.5, zorder=7,
+        fontsize=10.5, zorder=7,
     )
     label.set_path_effects(
         [path_effects.withStroke(linewidth=3.0, foreground=SURFACE)]
@@ -186,11 +197,11 @@ def anomaly_bars(
         i = water_years.index(wy)
         ax.annotate(
             str(wy), xy=(wy, values[i]), xytext=(0, 6),
-            textcoords="offset points", ha="center", fontsize=9, color=INK,
+            textcoords="offset points", ha="center", fontsize=10.5, color=INK,
         )
 
-    ax.set_xlabel("Water Year", color=INK_SECONDARY, fontsize=9.5)
-    ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
+    ax.set_xlabel("Water Year", color=INK_SECONDARY)
+    ax.set_ylabel(unit, color=INK_SECONDARY)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
     _titles(ax, title)
     return save(fig, path)
@@ -237,8 +248,8 @@ def model_agreement_scatter(
                     xytext=(7, 4), textcoords="offset points",
                     fontsize=9, color=INK)
 
-    ax.set_xlabel("ERA5 Rank (1 = Lowest)", color=INK_SECONDARY, fontsize=9.5)
-    ax.set_ylabel("MERRA-2 Rank (1 = Lowest)", color=INK_SECONDARY, fontsize=9.5)
+    ax.set_xlabel("ERA5 Rank (1 = Lowest)", color=INK_SECONDARY)
+    ax.set_ylabel("MERRA-2 Rank (1 = Lowest)", color=INK_SECONDARY)
     ax.set_xlim(0, n + 1)
     ax.set_ylim(0, n + 1)
     ax.set_aspect("equal")
@@ -309,36 +320,20 @@ def spaghetti(
         mean = np.full(width, np.nan)
         mean[filled] = np.nanmean(grid[:, filled], axis=0)
         ax.plot(np.arange(width), mean, color=INK, linewidth=2.6, zorder=5,
-                solid_capstyle="round")
+                solid_capstyle="round", label="Mean")
 
-    placed: list[tuple[float, float]] = []
-    for group, pole in ((low, DRY_COLOUR), (high, WET_COLOUR)):
+    # Outliers carry their identity in a legend rather than in labels pinned to
+    # the curve. Extreme years peak within days of each other, so a label at the
+    # peak sits in a thicket of near-identical lines and cannot be traced back
+    # to one of them.
+    for group, shades in ((high, WET_SHADES), (low, DRY_SHADES)):
         for rank, wy in enumerate(group):
             x, y = curve(wy)
             if x is None:
                 continue
-            weight = 1.0 - 0.30 * rank
-            ax.plot(x, y, color=_blend(SURFACE, pole, weight),
-                    linewidth=2.2 - 0.4 * rank, zorder=6 - rank * 0.1,
-                    solid_capstyle="round")
-            top = int(np.nanargmax(y))
-            label_x, label_y = float(x[top]), float(y[top])
-            # Peaks of extreme years cluster, so their labels would overprint
-            # each other into an unreadable run of digits. Nudge upward until
-            # clear of anything already placed nearby.
-            span = float(np.nanmax(mean)) if stack else label_y
-            step = max(span * 0.045, 1e-9)
-            while any(abs(label_x - px) < 26 and abs(label_y - py) < step
-                      for px, py in placed):
-                label_y += step
-            placed.append((label_x, label_y))
-            ax.annotate(
-                str(wy), xy=(label_x, label_y), xytext=(0, 7),
-                textcoords="offset points", ha="center", fontsize=9,
-                color=_blend(SURFACE, pole, max(weight, 0.75)), zorder=8,
-                path_effects=[path_effects.withStroke(linewidth=3.0,
-                                                      foreground=SURFACE)],
-            )
+            ax.plot(x, y, color=shades[min(rank, len(shades) - 1)],
+                    linewidth=2.1, zorder=6 - rank * 0.1,
+                    solid_capstyle="round", label=str(wy))
 
     ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273]
     ax.set_xticks(ticks)
@@ -346,8 +341,14 @@ def spaghetti(
                         "Jun", "Jul"])
     ax.set_xlim(0, 290)
     ax.set_ylim(bottom=0)
-    ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
+    ax.set_ylabel(unit, color=INK_SECONDARY)
     _titles(ax, title)
+    legend = ax.legend(
+        frameon=False, loc="upper left", ncol=2, handlelength=1.7,
+        columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
+    )
+    for text in legend.get_texts():
+        text.set_color(INK_SECONDARY)
     return save(fig, path)
 
 
@@ -393,7 +394,7 @@ def validation_series(
                         "Jun", "Jul", "Aug", "Sep"])
     ax.set_xlim(0, 365)
     ax.set_ylim(0, 1)
-    ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY, fontsize=9.5)
+    ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY)
     _titles(ax, title)
     legend = ax.legend(frameon=False, fontsize=9, loc="upper right", ncol=2)
     for text in legend.get_texts():
