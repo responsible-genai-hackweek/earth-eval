@@ -16,10 +16,28 @@ __all__ = ["Granule", "merra2_granule", "merra2_stream"]
 MERRA2_HOST = "https://goldsmr4.gesdisc.eosdis.nasa.gov"
 MERRA2_COLLECTION = "M2T1NXLND.5.12.4"
 
-#: Calendar months reprocessed under production stream 401.
-_REPROCESSED_401: frozenset[tuple[int, int]] = frozenset(
-    {(2020, 9), (2021, 6), (2021, 7), (2021, 8), (2021, 9)}
+#: Contiguous production-stream runs, established by listing every month
+#: directory from 1999 through 2026 and parsing all 10,075 granule names, plus
+#: spot checks at 1980-01, 1991-12 and 1992-01. Ordered; the first run whose
+#: span contains the date wins.
+#:
+#: The two 401 reprocessing windows are deliberately written out rather than
+#: derived: they are not the same shape. September 2020 is a single month, while
+#: June through September 2021 is four, and stream 400 resumes in between. A rule
+#: that treats them symmetrically silently misses August and September 2021.
+_STREAM_RUNS: tuple[tuple[date, date, int], ...] = (
+    (date(1980, 1, 1), date(1991, 12, 31), 100),
+    (date(1992, 1, 1), date(2000, 12, 31), 200),
+    (date(2001, 1, 1), date(2010, 12, 31), 300),
+    (date(2011, 1, 1), date(2020, 8, 31), 400),
+    (date(2020, 9, 1), date(2020, 9, 30), 401),
+    (date(2020, 10, 1), date(2021, 5, 31), 400),
+    (date(2021, 6, 1), date(2021, 9, 30), 401),
+    (date(2021, 10, 1), date(9999, 12, 31), 400),
 )
+
+#: First date the collection publishes.
+MERRA2_FIRST_DATE = date(1980, 1, 1)
 
 
 @dataclass(frozen=True)
@@ -37,12 +55,19 @@ class Granule:
 def merra2_stream(day: date) -> int:
     """Return the MERRA-2 production stream number for ``day``.
 
-    Stream 300 runs through 2010 and 400 from 2011, except for the months NASA
-    reprocessed under 401.
+    The stream is load-bearing, not cosmetic: requesting the right date with the
+    wrong stream returns HTTP 404 carrying a small XML error document rather
+    than raising, so a caller that writes response bytes straight to disk
+    produces a directory of tiny corrupt files that only fail later, at decode.
     """
-    if (day.year, day.month) in _REPROCESSED_401:
-        return 401
-    return 300 if day.year <= 2010 else 400
+    if day < MERRA2_FIRST_DATE:
+        raise ValueError(
+            f"MERRA-2 begins {MERRA2_FIRST_DATE.isoformat()}; got {day.isoformat()}"
+        )
+    for start, end, stream in _STREAM_RUNS:
+        if start <= day <= end:
+            return stream
+    raise ValueError(f"no MERRA-2 production stream covers {day.isoformat()}")
 
 
 def merra2_granule(day: date) -> Granule:

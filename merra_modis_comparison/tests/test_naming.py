@@ -11,9 +11,21 @@ from merra_modis_comparison.naming import merra2_granule, merra2_stream
 
 
 class TestMerraStreams:
+    """Boundaries from an exhaustive scan of every month directory 1999-2026."""
+
     @pytest.mark.parametrize(
         "day,stream",
         [
+            (date(1980, 1, 1), 100),
+            (date(1991, 12, 31), 100),
+            (date(1992, 1, 1), 200),
+            (date(1999, 10, 1), 200),
+            (date(2000, 1, 1), 200),
+            (date(2000, 9, 15), 200),
+            (date(2000, 12, 31), 200),
+            (date(2001, 1, 1), 300),
+            (date(2001, 2, 15), 300),
+            (date(2008, 12, 1), 300),
             (date(2009, 10, 1), 300),
             (date(2010, 12, 31), 300),
             (date(2011, 1, 1), 400),
@@ -43,6 +55,34 @@ class TestMerraStreams:
         assert merra2_stream(date(2010, 12, 31)) == 300
         assert merra2_stream(date(2011, 1, 1)) == 400
 
+    def test_the_200_to_300_changeover_is_the_2001_new_year(self):
+        """Not mid-2000, which is the tempting guess. All 366 days of 2000 are 200."""
+        assert merra2_stream(date(2000, 12, 31)) == 200
+        assert merra2_stream(date(2001, 1, 1)) == 300
+
+    def test_the_100_to_200_changeover_is_the_1992_new_year(self):
+        assert merra2_stream(date(1991, 12, 31)) == 100
+        assert merra2_stream(date(1992, 1, 1)) == 200
+
+    def test_the_two_401_windows_are_different_lengths(self):
+        """2020 is one month; 2021 is four. A symmetric rule misses Aug and Sep 2021."""
+        assert [merra2_stream(date(2020, m, 15)) for m in (8, 9, 10)] == [400, 401, 400]
+        assert [merra2_stream(date(2021, m, 15)) for m in (5, 6, 7, 8, 9, 10)] == [
+            400, 401, 401, 401, 401, 400,
+        ]
+
+    def test_stream_400_resumes_between_the_two_401_windows(self):
+        assert merra2_stream(date(2020, 10, 1)) == 400
+        assert merra2_stream(date(2021, 5, 31)) == 400
+
+    def test_every_day_of_the_analysis_period_resolves_to_a_known_stream(self):
+        from datetime import timedelta
+
+        day, last = date(1980, 10, 1), date(2026, 8, 1)
+        while day <= last:
+            assert merra2_stream(day) in (100, 200, 300, 400, 401)
+            day += timedelta(days=1)
+
 
 class TestMerraGranule:
     def test_filename_matches_the_archive(self):
@@ -57,6 +97,10 @@ class TestMerraGranule:
     def test_reprocessed_month_filename(self):
         g = merra2_granule(date(2021, 7, 4))
         assert g.filename == "MERRA2_401.tavg1_2d_lnd_Nx.20210704.nc4"
+
+    def test_an_early_granule_uses_stream_200(self):
+        g = merra2_granule(date(2000, 11, 15))
+        assert g.filename == "MERRA2_200.tavg1_2d_lnd_Nx.20001115.nc4"
 
     def test_url_is_absolute_and_https(self):
         g = merra2_granule(date(2026, 2, 14))
