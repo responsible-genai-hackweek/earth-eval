@@ -143,13 +143,32 @@ def build_merra2_year(wy: int, workers: int = 16) -> None:
     derive_merra2_csv(wy)
 
 
+#: Water years the analysis is actually about. Fetched first, so an interrupted
+#: run still answers the question. A chronological walk would deliver the least
+#: relevant years first and the feature years last, which is the wrong thing to
+#: have when time runs out.
+FEATURE_YEARS = (2026, 2023)
+
+
+def fetch_order(first: int, last: int) -> list[int]:
+    """Feature years first, then most recent to oldest.
+
+    Ordering by relevance rather than by date means every partial run is a
+    usable record: the years that carry the claim are already in, and each
+    additional year deepens the climatology from the recent end.
+    """
+    years = [wy for wy in FEATURE_YEARS if first <= wy <= last]
+    years += [wy for wy in range(last, first - 1, -1) if wy not in years]
+    return years
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     model = argv[0] if argv else "both"
     first = int(argv[1]) if len(argv) > 1 else 1981
     last = int(argv[2]) if len(argv) > 2 else 2026
 
-    for wy in range(first, last + 1):
+    for wy in fetch_order(first, last):
         try:
             if model in ("era5", "both"):
                 build_era5_year(wy)
