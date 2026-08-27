@@ -122,20 +122,20 @@ def band_masks(
 
 
 def domain_description(lat_centers: np.ndarray, lon_centers: np.ndarray) -> str:
-    """One terse line naming the bounding box and the mask, for a subtitle.
+    """The bounding box and mask as a parameter line, for a subtitle.
 
-    Stated on the figure rather than in a methods note, because the mask changes
-    every number on it.
+    Parameters separated by middots, not a sentence: this states the domain, it
+    does not narrate it. The elevation threshold belongs here because it changes
+    every number on the plot; the cell count does not, because how the model
+    grid happens to be discretised is not something a reader of the figure needs.
     """
     lon = np.asarray(lon_centers, dtype=np.float64)
     lon = np.where(lon > 180.0, lon - 360.0, lon)
     lat_e, lon_e = _edges(np.asarray(lat_centers, float)), _edges(lon)
-    mask = mountain_mask(lat_centers, lon_centers)
     return (
-        f"{abs(lon_e.min()):.2f}\u2013{abs(lon_e.max()):.2f}\u00b0W, "
-        f"{lat_e.min():.2f}\u2013{lat_e.max():.2f}\u00b0N  \u00b7  "
-        f"{int(mask.sum())} of {mask.size} cells with mean elevation "
-        f"\u2265 {MOUNTAIN_MIN_ELEVATION_FT:,.0f} ft"
+        f"{abs(lon_e.min()):.2f}\u2013{abs(lon_e.max()):.2f}\u00b0W"
+        f"  \u00b7  {lat_e.min():.2f}\u2013{lat_e.max():.2f}\u00b0N"
+        f"  \u00b7  Elevation \u2265 {MOUNTAIN_MIN_ELEVATION_FT:,.0f} ft"
     )
 
 

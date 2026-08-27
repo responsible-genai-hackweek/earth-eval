@@ -137,7 +137,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             mm_to_in(np.array([s.april_first_swe_mm for s in stats["era5"]])),
             title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
             unit="Snow Water Equivalent (in)",
-            subtitle=domain_description(*_merra_axes()),
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
         )))
@@ -147,7 +146,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             m_to_in(np.array([s.april_first_depth_m for s in stats["era5"]])),
             title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
             unit="Snow Depth (in)",
-            subtitle=domain_description(*_merra_axes()),
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
         )))
@@ -156,7 +154,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         # computed per day-of-year and traces a path no real year followed; each
         # curve here actually happened, and the shape of a year is part of the
         # result.
-        domain = domain_description(grid_lat, grid_lon)
         for field, label, unit, data, name, (field_prefix, convert) in (
             ("peak_swe_mm", "Snow Water Equivalent",
              "Snow Water Equivalent (in)", swe, "spaghetti_swe.png",
@@ -177,7 +174,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
                 data, era5_years, low=low, high=high,
                 title=f"Colorado Rocky Mountains: {label} by Water Year, ERA5 "
                       f"({min(era5_years)}\u2013{max(era5_years)})",
-                subtitle=domain,
                 unit=unit,
                 path=results / name,
             )))
@@ -192,7 +188,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             summary["figures"].append(str(spaghetti_bands(
                 bands, era5_years,
                 title=f"Colorado Rocky Mountains: {label} by Elevation Band, ERA5",
-                subtitle=domain,
                 unit=unit,
                 path=results / name.replace("spaghetti_", "bands_"),
             )))

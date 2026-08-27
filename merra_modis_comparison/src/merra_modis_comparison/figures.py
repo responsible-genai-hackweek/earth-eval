@@ -88,18 +88,14 @@ def _style(ax, *, grid_axis: str = "y") -> None:
     ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=3, width=0.9)
 
 
-def _titles(ax, title: str, subtitle: str | None = None) -> None:
-    """Place the title, and optionally one line of domain metadata, above the axes.
+def _titles(ax, title: str) -> None:
+    """Place the title above the axes.
 
-    The subtitle carries the bounding box and the elevation mask, not prose.
-    Those belong on the figure because they change every number on it;
-    explanation belongs in a caption.
+    Title only. The domain, the mask and any explanation belong in the figure
+    caption, where they can be edited without re-rendering.
     """
-    ax.text(0.0, 1.15 if subtitle else 1.08, title, transform=ax.transAxes,
-            color=INK, fontsize=15, fontweight="bold", va="top", ha="left")
-    if subtitle:
-        ax.text(0.0, 1.055, subtitle, transform=ax.transAxes, color=INK_MUTED,
-                fontsize=10.5, va="top", ha="left")
+    ax.text(0.0, 1.08, title, transform=ax.transAxes, color=INK,
+            fontsize=15, fontweight="bold", va="top", ha="left")
 
 
 #: When set, every saved figure is also appended to this multi-page document.
@@ -152,7 +148,6 @@ def anomaly_bars(
     values: np.ndarray,
     *,
     title: str,
-    subtitle: str | None = None,
     unit: str,
     highlight: tuple[int, ...] = (),
     path: Path,
@@ -208,7 +203,7 @@ def anomaly_bars(
     ax.set_xlabel("Water Year", color=INK_SECONDARY)
     ax.set_ylabel(unit, color=INK_SECONDARY)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
-    _titles(ax, title, subtitle)
+    _titles(ax, title)
     return save(fig, path)
 
 
@@ -275,7 +270,6 @@ def spaghetti(
     low: tuple[int, ...] = (),
     high: tuple[int, ...] = (),
     title: str,
-    subtitle: str | None = None,
     unit: str = "",
     path: Path = Path("spaghetti.png"),
 ) -> Path:
@@ -301,7 +295,7 @@ def spaghetti(
     _draw_spaghetti(ax, series, water_years, low, high)
     _month_axis(ax)
     ax.set_ylabel(unit, color=INK_SECONDARY)
-    _titles(ax, title, subtitle)
+    _titles(ax, title)
     legend = ax.legend(
         frameon=False, loc="upper left", ncol=2, handlelength=1.7,
         columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
@@ -316,7 +310,6 @@ def spaghetti_bands(
     water_years: list[int],
     *,
     title: str,
-    subtitle: str,
     unit: str,
     path: Path,
 ) -> Path:
@@ -338,7 +331,7 @@ def spaghetti_bands(
         ax.text(0.995, 0.94, label, transform=ax.transAxes, ha="right", va="top",
                 fontsize=12, color=INK, fontweight="bold")
         if index == 0:
-            _titles(ax, title, subtitle)
+            _titles(ax, title)
             legend = ax.legend(
                 frameon=False, loc="upper left", ncol=2, handlelength=1.7,
                 columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
