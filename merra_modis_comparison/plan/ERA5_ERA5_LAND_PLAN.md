@@ -68,3 +68,16 @@ model-specific target coordinates and are never forced onto the MERRA-2 grid.
 All gates pass. The authenticated one-day live preflight returned the expected
 ERA5 17×21 and ERA5-Land 41×51 Colorado arrays at exactly 15:00 UTC and produced
 finite 0–1 fSCA values with the documented direct/diagnosed methods.
+
+## 6. ERA5-Land-only WY2023 trial
+
+Status: **completed 2026-08-26**
+
+- The trial selected only direct ERA5-Land `snow_cover`; no diagnosed ERA5 field
+  entered the run or figure.
+- All 12 WY2023 monthly checkpoints validated and the overall and 0.1° cell CSVs
+  were written.
+- The November 2022–May 2023 spatial artifact reproduces the established
+  14-panel mean-bias/MAE layout on the ERA5-Land grid with subtle USGS 3DEP
+  hillshade and labeled 2,000/3,000 m contours.
+- Output: `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`.

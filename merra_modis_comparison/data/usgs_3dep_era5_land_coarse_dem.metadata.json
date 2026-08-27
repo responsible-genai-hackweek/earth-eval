@@ -1,0 +1,13 @@
+{
+  "title": "USGS 3DEP coarse bare-earth elevation subset for ERA5-Land",
+  "source": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "downloaded": "2026-08-26",
+  "bbox_epsg_4326": [-109.05, 36.95, -103.95, 41.05],
+  "shape": [82, 102],
+  "pixel_size_degrees": [0.05, 0.05],
+  "crs": "EPSG:4326",
+  "pixel_type": "float32",
+  "units": "meters",
+  "interpolation": "bilinear",
+  "purpose": "Hillshade and 2000/3000 m contours for the Colorado ERA5-Land/MODSCAG spatial comparison"
+}

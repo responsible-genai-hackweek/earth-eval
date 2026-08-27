@@ -34,6 +34,7 @@ merra-modis-bias-significance = "merra_modis_comparison.bias_significance:main"
 merra-modis-wet-dry-bias-significance = "merra_modis_comparison.wet_dry_bias_significance:main"
 merra-modis-regridding-diagnostic = "merra_modis_comparison.regridding_diagnostic:main"
 reanalysis-modis-fsca = "merra_modis_comparison.reanalysis_cli:main"
+reanalysis-modis-spatial = "merra_modis_comparison.reanalysis_spatial_plotting:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

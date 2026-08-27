@@ -404,11 +404,18 @@ def preflight(config: ReanalysisRunConfig) -> None:
         f"({eligible_cells[spec.model_id]} can meet archive support)"
         for spec in config.model_specs
     )
+    method_summary = ", ".join(
+        (
+            f"{spec.display_name} direct snow_cover"
+            if spec.fsca_method == "direct_snow_cover"
+            else f"{spec.display_name} diagnosed from snow depth+density"
+        )
+        for spec in config.model_specs
+    )
     print(
         "preflight passed: "
         f"{len(config.dates)} dates, {len(config.calendar_months)} months, "
-        f"{grid_summary}; model fSCA at 15:00 UTC "
-        "(ERA5 diagnosed from snow depth+density; ERA5-Land direct snow_cover)",
+        f"{grid_summary}; model fSCA at 15:00 UTC ({method_summary})",
         flush=True,
     )
 
