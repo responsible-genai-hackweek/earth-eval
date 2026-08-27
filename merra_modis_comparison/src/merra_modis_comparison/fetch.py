@@ -35,11 +35,25 @@ from .sources import era5 as era5_src
 from .sources import merra2 as merra2_src
 
 __all__ = [
-    "era5_daily_means",
+    "domain_mean_of",
+    "era5_daily_cells",
     "era5_diurnal_error",
-    "merra2_daily_means",
+    "merra2_daily_cells",
     "open_era5",
 ]
+
+
+def domain_mean_of(cells: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    """Area-weighted domain mean of a ``(n_days, ny, nx)`` stack, per day."""
+    cells = np.asarray(cells, dtype=np.float64)
+    flat = cells.reshape(cells.shape[0], -1)
+    w = np.asarray(weights, dtype=np.float64).ravel()
+    if flat.shape[1] != w.size:
+        raise ValueError(f"cells have {flat.shape[1]} cells but {w.size} weights")
+    ok = np.isfinite(flat) & (w > 0)[None, :]
+    total = np.where(ok, w[None, :], 0.0).sum(axis=1)
+    summed = np.where(ok, flat * w[None, :], 0.0).sum(axis=1)
+    return np.where(total > 0, summed / np.maximum(total, 1e-30), np.nan)
 
 DOMAIN = (
     era5_src.DOMAIN_LON_WEST,
@@ -92,14 +106,20 @@ def _era5_window(ds):
     )
 
 
-def era5_daily_means(
+def era5_daily_cells(
     days: list[date],
     variables: tuple[str, ...] = ("snow_depth", "snow_density"),
     hours: tuple[int, ...] = (12,),
     workers: int = 24,
     store: str = era5_src.ERA5_STORE,
 ) -> dict[str, np.ndarray]:
-    """Area-weighted domain means for each requested day.
+    """Per-cell daily fields on ERA5's native grid, one slab per requested day.
+
+    Returns the fields themselves rather than their domain mean. Storing the
+    cells is what makes every downstream quantity - a domain mean, a derived
+    depth, a difference map - recomputable without going back to the network.
+    Reducing to a scalar here would discard the spatial covariance that a
+    product or ratio of two fields depends on.
 
     ``hours`` selects which hours of each day are averaged. One hour is the
     affordable default across a long record; pass all twenty-four to compute a
@@ -127,22 +147,9 @@ def era5_daily_means(
             ]
             fields[name] = np.nanmean(np.stack(samples), axis=0)
 
-        out = {name: _weighted_mean(block, weights) for name, block in fields.items()}
+        return day, fields, era5_src.classify_stream(day, final, era5t)
 
-        # Derived quantities are computed PER CELL and then averaged. Deriving
-        # them from domain means instead would take a ratio of means, which is
-        # not the mean of the ratio - on real dry-year fields that is a factor
-        # of two, because low water equivalent and low density coincide in space.
-        if "snow_depth" in fields and "snow_density" in fields:
-            swe = swe_from_water_equivalent_m(fields["snow_depth"])
-            depth = geometric_depth_m(swe, fields["snow_density"])
-            out["depth_m"] = _weighted_mean(depth, weights)
-            out["fsca"] = _weighted_mean(
-                era5_snow_cover(swe, fields["snow_density"]), weights
-            )
-        return day, out, era5_src.classify_stream(day, final, era5t)
-
-    results: dict[date, dict[str, float]] = {}
+    results: dict[date, dict[str, np.ndarray]] = {}
     streams: dict[date, str] = {}
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
         for day, values, stream in pool.map(one_day, days):
@@ -150,10 +157,14 @@ def era5_daily_means(
             streams[day] = stream
 
     ordered = sorted(results)
-    names = sorted({k for values in results.values() for k in values})
-    out = {name: np.array([results[d].get(name, np.nan) for d in ordered]) for name in names}
-    out["_days"] = np.array(ordered, dtype=object)
-    out["_stream"] = np.array([streams[d] for d in ordered], dtype=object)
+    out: dict[str, np.ndarray] = {
+        name: np.stack([results[d][name] for d in ordered]).astype(np.float32)
+        for name in variables
+    }
+    out["_days"] = np.array([d.isoformat() for d in ordered])
+    out["_stream"] = np.array([streams[d] for d in ordered])
+    out["_lat"] = lat.astype(np.float64)
+    out["_lon"] = lon.astype(np.float64)
     return out
 
 
@@ -164,13 +175,14 @@ def era5_diurnal_error(sample_days: list[date], **kwargs) -> dict[str, float]:
     single-hour sampling across the long record is defensible and the number
     justifying it is on the record.
     """
-    full = era5_daily_means(sample_days, hours=tuple(range(24)), **kwargs)
-    single = era5_daily_means(sample_days, hours=(12,), **kwargs)
+    full = era5_daily_cells(sample_days, hours=tuple(range(24)), **kwargs)
+    single = era5_daily_cells(sample_days, hours=(12,), **kwargs)
     report: dict[str, float] = {}
     for name in full:
         if name.startswith("_"):
             continue
-        a, b = full[name], single[name]
+        a = np.asarray(full[name]).reshape(len(sample_days), -1).mean(axis=1)
+        b = np.asarray(single[name]).reshape(len(sample_days), -1).mean(axis=1)
         ok = np.isfinite(a) & np.isfinite(b)
         if not np.any(ok):
             continue
@@ -182,16 +194,17 @@ def era5_diurnal_error(sample_days: list[date], **kwargs) -> dict[str, float]:
     return report
 
 
-def merra2_daily_means(days: list[date], workers: int = 16) -> dict[str, np.ndarray]:
-    """True 24-hour daily domain means of FRSNO, SNODP and SNOMAS."""
+def merra2_daily_cells(days: list[date], workers: int = 16) -> dict[str, np.ndarray]:
+    """Per-cell true 24-hour daily means of FRSNO, SNODP and SNOMAS.
+
+    Returns the 9x8 fields themselves, for the same reason as
+    :func:`era5_daily_cells`: a scalar cannot be un-averaged.
+    """
     import requests
 
     from .grid import build_target_grid
 
     grid = build_target_grid()
-    weights = domain_area_weights(
-        grid.lat_centers, grid.lon_centers, *DOMAIN
-    )
     login, _, password = netrc.netrc().authenticators("urs.earthdata.nasa.gov")
 
     def worker(day: date):
@@ -200,21 +213,25 @@ def merra2_daily_means(days: list[date], workers: int = 16) -> dict[str, np.ndar
             session = requests.Session()
             session.auth = (login, password)
             _SESSIONS.set(session)
-        return day, _fetch_merra2_day(session, day, grid, weights)
+        return day, _fetch_merra2_day(session, day, grid)
 
-    results: dict[date, dict[str, float]] = {}
+    results: dict[date, dict[str, np.ndarray]] = {}
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
         for day, values in pool.map(worker, days):
             results[day] = values
 
     ordered = sorted(results)
-    names = sorted({k for values in results.values() for k in values})
-    out = {name: np.array([results[d][name] for d in ordered]) for name in names}
-    out["_days"] = np.array(ordered, dtype=object)
+    out: dict[str, np.ndarray] = {
+        name: np.stack([results[d][name] for d in ordered]).astype(np.float32)
+        for name in merra2_src.SNOW_VARIABLES
+    }
+    out["_days"] = np.array([d.isoformat() for d in ordered])
+    out["_lat"] = grid.lat_centers
+    out["_lon"] = grid.lon_centers
     return out
 
 
-def _fetch_merra2_day(session, day: date, grid, weights) -> dict[str, float]:
+def _fetch_merra2_day(session, day: date, grid) -> dict[str, np.ndarray]:
     import io
 
     import h5netcdf
@@ -243,13 +260,8 @@ def _fetch_merra2_day(session, day: date, grid, weights) -> dict[str, float]:
             np.where(np.isnan(fields["FRSNO"]), 0.0, fields["FRSNO"]),
             lat, lon, day, str(units),
         )
-    daily = {name: np.nanmean(block, axis=0) for name, block in fields.items()}
-    out = {name: _weighted_mean(block, weights) for name, block in daily.items()}
-    # Per cell, then averaged - see the note in era5_daily_means.
-    out["depth_m"] = _weighted_mean(
-        grid_mean_depth_m(np.clip(daily["FRSNO"], 0.0, 1.0), daily["SNODP"]), weights
-    )
-    return out
+    # The 24-hour mean of each field, still per cell.
+    return {name: np.nanmean(block, axis=0) for name, block in fields.items()}
 
 
 def _weighted_mean(values: np.ndarray, weights: np.ndarray) -> float:

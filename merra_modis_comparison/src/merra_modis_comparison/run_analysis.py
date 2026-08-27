@@ -1,7 +1,15 @@
-"""Build the daily domain-mean series for both reanalyses, water year by water year.
+"""Build the daily record for both reanalyses, water year by water year.
 
-Checkpoints one CSV per model per water year, so an interrupted run resumes
-without refetching. Raw fields are never persisted - only the domain means.
+**The per-cell slab is the checkpoint.** Each water year is stored as a compressed
+array of daily fields on the model's own native grid, and the domain-mean CSV is
+*derived* from it. That ordering matters: a scalar cannot be un-averaged, so a
+checkpoint holding only domain means cannot answer a question about a product or
+ratio of two fields, nor produce a map. Storing the cells costs about twelve
+megabytes for the whole record and makes every downstream quantity rebuildable
+with no network access at all.
+
+Raw granules are still never persisted - only the 72-cell (or 399-cell) daily
+means that the analysis is defined over.
 """
 
 from __future__ import annotations
@@ -9,30 +17,51 @@ from __future__ import annotations
 import csv
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import numpy as np
 
 from .calendars import enumerate_dates
-from .fetch import era5_daily_means, merra2_daily_means, open_era5
+from .fetch import domain_mean_of, era5_daily_cells, merra2_daily_cells, open_era5
+from .grid import build_target_grid
+from .regrid import domain_area_weights
+from .snowvars import (
+    era5_snow_cover,
+    geometric_depth_m,
+    grid_mean_depth_m,
+    swe_from_water_equivalent_m,
+)
 
 RESULTS = Path(__file__).resolve().parents[2] / "results"
+CELLS = RESULTS / "daily_cell_means"
 CHECKPOINTS = RESULTS / "daily_domain_means"
 
 #: Last MERRA-2 granule published, verified against the archive. The collection
 #: lags real time by about four weeks.
 MERRA2_LAST_DATE = date(2026, 8, 1)
 
+DOMAIN = (-109.0625, -104.0625, 36.75, 41.25)
 ERA5_COLUMNS = ("date", "stream", "swe_mm_we", "snow_density_kg_m3", "depth_m", "fsca")
 MERRA2_COLUMNS = ("date", "frsno", "snodp_m", "snomas_kg_m2", "depth_m")
+
+
+def cell_path(model: str, wy: int) -> Path:
+    return CELLS / f"{model}_WY{wy}.npz"
 
 
 def checkpoint_path(model: str, wy: int) -> Path:
     return CHECKPOINTS / f"{model}_WY{wy}.csv"
 
 
-def _write_atomic(path: Path, header: tuple[str, ...], rows: list[list]) -> None:
+def _write_atomic_npz(path: Path, **arrays) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f".tmp{os.getpid()}.npz")
+    np.savez_compressed(tmp, **arrays)
+    tmp.replace(path)
+
+
+def _write_atomic_csv(path: Path, header, rows) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(f".tmp{os.getpid()}")
     with tmp.open("w", newline="") as handle:
@@ -44,58 +73,74 @@ def _write_atomic(path: Path, header: tuple[str, ...], rows: list[list]) -> None
     tmp.replace(path)
 
 
-def build_era5_year(wy: int, with_density: bool, workers: int = 24) -> None:
-    """Build one water year, clipped to what the store actually holds.
+def derive_era5_csv(wy: int) -> None:
+    """Rebuild one ERA5 domain-mean CSV from its stored cells. No network."""
+    with np.load(cell_path("era5", wy), allow_pickle=False) as data:
+        days = [str(d) for d in data["_days"]]
+        streams = [str(s) for s in data["_stream"]]
+        weights = domain_area_weights(data["_lat"], data["_lon"], *DOMAIN)
+        swe_cells = swe_from_water_equivalent_m(data["snow_depth"])
+        density_cells = data["snow_density"]
 
-    The most recent water year is necessarily partial. Clipping is explicit
-    rather than incidental: the alternative is reading absent chunks back as
-    NaN, which would quietly turn a short year into a missing one.
-    """
-    path = checkpoint_path("era5", wy)
-    if path.exists():
-        return
-    _, _, _, era5t_stop = open_era5()
-    days = [d for d in enumerate_dates((wy,)) if d <= era5t_stop]
-    if not days:
-        return
-    variables = ("snow_depth", "snow_density") if with_density else ("snow_depth",)
-    got = era5_daily_means(days, variables=variables, hours=(12,), workers=workers)
-    density = got.get("snow_density")
-    depth = got.get("depth_m")
-    fsca = got.get("fsca")
+    swe = domain_mean_of(swe_cells, weights)
+    density = domain_mean_of(density_cells, weights)
+    # Derived per cell, then averaged - the mean of a ratio, not a ratio of means.
+    depth = domain_mean_of(geometric_depth_m(swe_cells, density_cells), weights)
+    fsca = domain_mean_of(era5_snow_cover(swe_cells, density_cells), weights)
+
     rows = [
-        [
-            d.isoformat(),
-            got["_stream"][i],
-            f"{got['snow_depth'][i] * 1000.0:.6f}",
-            f"{density[i]:.4f}" if density is not None else "",
-            f"{depth[i]:.8f}" if depth is not None else "",
-            f"{fsca[i]:.8f}" if fsca is not None else "",
-        ]
-        for i, d in enumerate(got["_days"])
+        [days[i], streams[i], f"{swe[i]:.6f}", f"{density[i]:.4f}",
+         f"{depth[i]:.8f}", f"{fsca[i]:.8f}"]
+        for i in range(len(days))
     ]
-    _write_atomic(path, ERA5_COLUMNS, rows)
+    _write_atomic_csv(checkpoint_path("era5", wy), ERA5_COLUMNS, rows)
+
+
+def derive_merra2_csv(wy: int) -> None:
+    """Rebuild one MERRA-2 domain-mean CSV from its stored cells. No network."""
+    grid = build_target_grid()
+    weights = domain_area_weights(grid.lat_centers, grid.lon_centers, *DOMAIN)
+    with np.load(cell_path("merra2", wy), allow_pickle=False) as data:
+        days = [str(d) for d in data["_days"]]
+        frsno_cells = np.clip(data["FRSNO"], 0.0, 1.0)
+        snodp_cells = data["SNODP"]
+        snomas_cells = data["SNOMAS"]
+
+    frsno = domain_mean_of(frsno_cells, weights)
+    snodp = domain_mean_of(snodp_cells, weights)
+    snomas = domain_mean_of(snomas_cells, weights)
+    depth = domain_mean_of(grid_mean_depth_m(frsno_cells, snodp_cells), weights)
+
+    rows = [
+        [days[i], f"{frsno[i]:.8f}", f"{snodp[i]:.8f}", f"{snomas[i]:.6f}",
+         f"{depth[i]:.8f}"]
+        for i in range(len(days))
+    ]
+    _write_atomic_csv(checkpoint_path("merra2", wy), MERRA2_COLUMNS, rows)
+
+
+def build_era5_year(wy: int, workers: int = 24) -> None:
+    """Fetch and store one water year, clipped to what the store actually holds."""
+    if not cell_path("era5", wy).exists():
+        _, _, _, era5t_stop = open_era5()
+        days = [d for d in enumerate_dates((wy,)) if d <= era5t_stop]
+        if not days:
+            return
+        got = era5_daily_cells(
+            days, variables=("snow_depth", "snow_density"), hours=(12,), workers=workers
+        )
+        _write_atomic_npz(cell_path("era5", wy), **got)
+    derive_era5_csv(wy)
 
 
 def build_merra2_year(wy: int, workers: int = 16) -> None:
-    path = checkpoint_path("merra2", wy)
-    if path.exists():
-        return
-    days = [d for d in enumerate_dates((wy,)) if d <= MERRA2_LAST_DATE]
-    if not days:
-        return
-    got = merra2_daily_means(days, workers=workers)
-    rows = [
-        [
-            d.isoformat(),
-            f"{got['FRSNO'][i]:.8f}",
-            f"{got['SNODP'][i]:.8f}",
-            f"{got['SNOMAS'][i]:.6f}",
-            f"{got['depth_m'][i]:.8f}",
-        ]
-        for i, d in enumerate(got["_days"])
-    ]
-    _write_atomic(path, MERRA2_COLUMNS, rows)
+    if not cell_path("merra2", wy).exists():
+        days = [d for d in enumerate_dates((wy,)) if d <= MERRA2_LAST_DATE]
+        if not days:
+            return
+        got = merra2_daily_cells(days, workers=workers)
+        _write_atomic_npz(cell_path("merra2", wy), **got)
+    derive_merra2_csv(wy)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
     for wy in range(first, last + 1):
         try:
             if model in ("era5", "both"):
-                build_era5_year(wy, with_density=True)
+                build_era5_year(wy)
             if model in ("merra2", "both"):
                 build_merra2_year(wy)
             print(f"WY{wy} done", flush=True)
