@@ -184,7 +184,18 @@ def assert_coverage(report: CoverageReport, *, accept_deficit: bool = False) -> 
 
     An under-covered cell is dangerous precisely because it is *not* obviously
     broken: it can sit above the support threshold every clear day while its
-    reference mean is drawn from only part of its area.
+    reference mean is drawn from only part of its area. Worse, a denominator
+    derived from the configured tiles rather than from grid geometry makes
+    support 1.0 by construction, so the deficit becomes invisible instead of
+    merely tolerated.
+
+    How much a deficit actually biases a cell depends on whether the missing
+    part differs from the covered part. For the one deficient cell in this
+    domain, ``j260_i121``, it does not: the missing wedge averages 1511 m
+    against 1522 m for the covered portion, both on flat eastern plains, so the
+    practical bias here is small. That is a property of this cell, not a reason
+    to relax the gate - the same deficit over mountainous terrain would bias the
+    cell mean materially, and nothing in the support fraction would say so.
     """
     if not report.deficient:
         return

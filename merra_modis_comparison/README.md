@@ -83,6 +83,13 @@ not published. That is above the 80% support threshold, so it would pass
 silently; the coverage gate refuses it unless the deficit is accepted explicitly,
 and it is stamped into every row.
 
+Measured, the bias this actually causes is small: the missing wedge averages
+1511 m elevation against 1522 m for the covered part, both flat eastern plains.
+The gate exists because nothing in a support fraction would have told you that —
+the same deficit over mountainous terrain would bias the cell mean materially,
+and a denominator derived from the configured tiles would report 100% support
+either way.
+
 ## Layout
 
 ```
