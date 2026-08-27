@@ -134,6 +134,45 @@ A record-low claim is reported as a rank with its distribution, from each model
 separately. It is never asserted from a single model, and never from a
 model-mean.
 
+## 6.1 Which metric carries the claim, and which cannot
+
+Established by measurement across WY2000–WY2026 before the full record was
+built. These are constraints on the write-up, not preferences.
+
+**Anchor the claim on 1 April SWE and 1 April geometric depth.** On both, WY2026
+is the lowest of the record under every sensitivity test applied — four domain
+weightings, a mountain-only subset, and 12Z versus 24-hour sampling — and both
+rest on final ERA5 rather than provisional ERA5T. The depth signal is the sharper
+of the two, because WY2026's snow was also less dense than usual.
+
+**Peak SWE does not support an unqualified record-low claim.** In ERA5, WY2026 is
+the *second* lowest; WY2018 is lower by about 4%, and that ordering survives
+recomputation with true 24-hour daily means around each peak. If peak SWE is
+quoted at all, it is quoted as "second lowest, essentially tied with WY2018".
+
+**Peak SWE must be computed from daily data.** A weekly sample reverses the
+result: it misses WY2026's sharp early-March peak while WY2018's flat peak is
+unaffected. The 1 April benchmark is immune, being a single fixed date.
+
+**MERRA-2's 1 April value is a degenerate metric in this domain and must not be
+used as a benchmark.** MERRA-2 melts this domain out almost entirely by April in
+most years — several years fall below 1 mm and at least one is exactly zero
+across all 72 cells — so ranking within that band is noise. Reporting "MERRA-2
+ranks WY2026 only seventh" would mislead exactly as much as calling it a record.
+MERRA-2 earns its place on peak SWE and season-mean SWE, where it is not
+degenerate and where it independently puts WY2026 lowest.
+
+**Do not quote MERRA-2 peak dates.** They fall in November–February in most
+years, which is not physical for Colorado; ERA5's early-March-to-early-April
+peak is. MERRA-2 is used for ranking, not for timing.
+
+**Never quote a "% of normal" or "times lower than WY2023" figure without naming
+the product.** The two models disagree in magnitude by roughly three-fold in a
+wet year and by more than an order of magnitude in a dry one. The disagreement is
+not a constant offset — it grows as the snowpack thins, which is precisely the
+axis this story runs along. That behaviour is itself a finding and is reported as
+one.
+
 ## 7. Satellite validation — WY2023 only
 
 One observational anchor, deliberately narrow: STC-MODSCAG `snow_fraction` versus
