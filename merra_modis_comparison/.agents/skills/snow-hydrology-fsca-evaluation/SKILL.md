@@ -1,6 +1,6 @@
 ---
 name: snow-hydrology-fsca-evaluation
-description: Reproduce, audit, interpret, or extend the Colorado daily MERRA-2 versus STC-MODSCAG fractional snow-covered area evaluation. Use for product and time matching, MODIS-to-MERRA regridding, checkpointed execution, bias metrics, wet/dry composites, elevation analysis, cellwise significance tests, or related figures in this repository. Do not carry these choices to unrelated variables or domains without revisiting the scientific contract.
+description: Reproduce, audit, interpret, or extend the Colorado daily MERRA-2, ERA5, or ERA5-Land versus STC-MODSCAG fractional snow-covered area evaluation. Use for product and time matching, MODIS-to-model-grid aggregation, checkpointed execution, bias metrics, wet/dry composites, elevation analysis, cellwise significance tests, or related figures in this repository. Do not carry these choices to unrelated variables or domains without revisiting the scientific contract.
 ---
 
 # Snow Hydrology fSCA Evaluation
@@ -26,11 +26,12 @@ checkpoint metadata.
 
 ## Preserve these core decisions
 
-- Compare daily STC-MODSCAG `snow_fraction` with MERRA-2 `FRSNO` at index 15,
-  representing 15:00–16:00 UTC.
-- Aggregate the equal-area 500 m MODSCAG pixels to the native MERRA-2 grid.
-  Do not interpolate MERRA-2 down to MODIS resolution and call the resulting
-  samples independent.
+- Compare daily STC-MODSCAG `snow_fraction` with the reviewed model field:
+  MERRA-2 `FRSNO` at index 15 (15:00–16:00 UTC), or the ERA5/ERA5-Land hourly
+  `snow_cover` field at 15:00 UTC.
+- Aggregate the equal-area 500 m MODSCAG pixels to the selected model product
+  grid. Do not interpolate a model down to MODIS resolution and call the
+  resulting samples independent.
 - Use MODSCAG pixel centers for target-cell membership and an arithmetic mean
   of valid fine pixels. Require at least 80% daily MODSCAG support.
 - Weight pooled errors by valid MODSCAG pixel count, which represents paired
@@ -61,7 +62,7 @@ checkpoint metadata.
 
 ## Scientific guardrails
 
-- Do not silently change the MODSCAG product, MERRA collection, 15Z match,
+- Do not silently change the MODSCAG product, selected model collection, 15Z match,
   water-year range, wet/dry membership, support threshold, weighting, or mask.
 - Do not use the number of spatial cells as the degrees of freedom for temporal
   bias tests. Spatial autocorrelation and shared storms violate that
@@ -74,8 +75,8 @@ checkpoint metadata.
 - Keep `days_without_observation` as a diagnostic. The selected MODSCAG product
   already contains its documented interpolation; do not silently reinterpret
   it as direct observation.
-- Never write Earthdata credentials, tokens, `.netrc` contents, or downloaded
-  raw granules to repository outputs.
+- Never write Earthdata or CDS credentials, tokens, `.netrc`/`.cdsapirc`
+  contents, or downloaded raw granules to repository outputs.
 
 ## Completion standard
 

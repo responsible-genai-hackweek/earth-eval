@@ -8,8 +8,10 @@ Read:
 
 - `README.md` for the public experiment description;
 - `research/FSCA_PRODUCT_NOTES.md` for product research;
+- `research/ERA5_PRODUCT_NOTES.md` for ERA product research;
 - `plan/FSCA_PIPELINE_PLAN.md` and `plan/MULTIYEAR_2010_2023_PLAN.md` for the
   research-plan-implement record;
+- `plan/ERA5_ERA5_LAND_PLAN.md` for the multi-model extension;
 - `src/merra_modis_comparison/config.py` for the domain and operational limits;
 - `src/merra_modis_comparison/products.py` for data access and regridding; and
 - checkpoint metadata before assuming an existing file is compatible.
@@ -24,7 +26,9 @@ The tested interpreter is:
 
 Install with `python -m pip install -e '.[test]'`. MERRA-2 access requires NASA
 Earthdata credentials through `~/.netrc` or `EARTHDATA_TOKEN`. MODSCAG is
-downloaded from a public FTP archive. Never print, copy, or commit credentials.
+downloaded from a public FTP archive. ERA5 access requires a CDS personal
+access token through `~/.cdsapirc` or `CDSAPI_KEY`, plus accepted ERA5 and
+ERA5-Land licences. Never print, copy, or commit credentials.
 
 Run the preflight before a fresh download campaign:
 
@@ -62,6 +66,17 @@ Operational defaults:
 
 Do not increase FTP slots to match CPU workers. The limiting resource is the
 archive connection policy, not local CPU availability.
+
+For the shared ERA5/ERA5-Land run, use:
+
+```bash
+./run_era5_era5_land_to_completion.zsh
+```
+
+It retains the same 16 workers and eight FTP slots, adds a four-request CDS
+gate, downloads MODSCAG once per day for both grids, and writes independent
+model-month checkpoints. Monthly CDS NetCDF subsets are task-local temporary
+files and must never be moved into `results/`.
 
 ## Checkpoint logic
 

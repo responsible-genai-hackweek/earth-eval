@@ -1,4 +1,4 @@
 interface:
   display_name: "Snow Hydrology fSCA Evaluation"
-  short_description: "Reproduce the MERRA-2/MODSCAG fSCA analysis"
-  default_prompt: "Use $snow-hydrology-fsca-evaluation to reproduce or extend the Colorado MERRA-2/MODSCAG comparison."
+  short_description: "Reproduce the reanalysis/MODSCAG fSCA analysis"
+  default_prompt: "Use $snow-hydrology-fsca-evaluation to reproduce or extend the Colorado MERRA-2, ERA5, or ERA5-Land comparison with MODSCAG."

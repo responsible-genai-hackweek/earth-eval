@@ -1,6 +1,11 @@
 .DS_Store
+.cdsapirc
+.netrc
+*.download
+*.nc
+*.nc4
 __pycache__/
 *.py[cod]
-.pytest_cache/
 *.egg-info/
+.pytest_cache/
 .mypy_cache/

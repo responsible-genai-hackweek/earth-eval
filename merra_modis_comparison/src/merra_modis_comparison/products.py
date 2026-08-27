@@ -14,6 +14,7 @@ import numpy as np
 from pyproj import CRS, Transformer
 
 from .config import TargetGrid
+from .grids import SpatialGrid
 
 
 MODSCAG_ROOT = "ftp://sidads.colorado.edu/pub/DATASETS/STC_MODSCGDRF_HIST_v1"
@@ -49,7 +50,7 @@ class TileMapping:
     expected_counts: np.ndarray
 
 
-def _projected_target_bounds(grid: TargetGrid) -> tuple[float, float, float, float]:
+def _projected_target_bounds(grid: SpatialGrid) -> tuple[float, float, float, float]:
     lon_edges = grid.lon_edges
     lat_edges = grid.lat_edges
     lons = np.linspace(lon_edges[0], lon_edges[-1], 121)
@@ -59,7 +60,7 @@ def _projected_target_bounds(grid: TargetGrid) -> tuple[float, float, float, flo
     return float(x.min()), float(y.min()), float(x.max()), float(y.max())
 
 
-def tiles_for_grid(grid: TargetGrid) -> tuple[str, ...]:
+def tiles_for_grid(grid: SpatialGrid) -> tuple[str, ...]:
     lon_edges = grid.lon_edges
     lat_edges = grid.lat_edges
     lons = np.linspace(lon_edges[0], lon_edges[-1], 121)
@@ -76,7 +77,7 @@ def tiles_for_grid(grid: TargetGrid) -> tuple[str, ...]:
     return tuple(f"h{hh:02d}v{vv:02d}" for hh, vv in pairs)
 
 
-def archived_tiles_for_grid(grid: TargetGrid) -> tuple[str, ...]:
+def archived_tiles_for_grid(grid: SpatialGrid) -> tuple[str, ...]:
     return tuple(tile for tile in tiles_for_grid(grid) if tile in MODSCAG_ARCHIVE_TILES)
 
 
@@ -137,7 +138,7 @@ def _tile_coordinates(tile: str) -> tuple[np.ndarray, np.ndarray]:
 
 
 def build_tile_mapping(
-    path: Path | None, tile: str, grid: TargetGrid
+    path: Path | None, tile: str, grid: SpatialGrid
 ) -> TileMapping:
     xmin, ymin, xmax, ymax = _projected_target_bounds(grid)
     expected_x, expected_y = _tile_coordinates(tile)
@@ -197,7 +198,7 @@ def build_tile_mapping(
 
 
 def aggregate_modscag(
-    paths: dict[str, Path], mappings: dict[str, TileMapping], grid: TargetGrid
+    paths: dict[str, Path], mappings: dict[str, TileMapping], grid: SpatialGrid
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     sums = np.zeros(grid.size, dtype=np.float64)
     counts = np.zeros(grid.size, dtype=np.int64)
