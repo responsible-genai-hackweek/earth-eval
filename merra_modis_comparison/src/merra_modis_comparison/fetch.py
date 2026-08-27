@@ -234,18 +234,44 @@ def merra2_daily_cells(days: list[date], workers: int = 16) -> dict[str, np.ndar
     return out
 
 
-def _fetch_merra2_day(session, day: date, grid) -> dict[str, np.ndarray]:
+#: Statuses worth retrying. A 404 is deliberately absent: it means the granule
+#: or the production stream is wrong, which retrying cannot fix.
+_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+
+
+def _fetch_merra2_day(session, day: date, grid, attempts: int = 4) -> dict[str, np.ndarray]:
     import io
+    import time
 
     import h5netcdf
 
     url = merra2_src.granule_url(day)
-    response = session.get(url, timeout=180)
-    if response.status_code != 200:
+    response = None
+    for attempt in range(attempts):
+        try:
+            response = session.get(url, timeout=180)
+        except Exception:  # connection reset, timeout, DNS blip
+            if attempt == attempts - 1:
+                raise
+            time.sleep(2**attempt)
+            continue
+        if response.status_code == 200:
+            break
+        if response.status_code not in _RETRYABLE_STATUS or attempt == attempts - 1:
+            break
+        time.sleep(2**attempt)
+
+    if response is None or response.status_code != 200:
+        status = "no response" if response is None else response.status_code
+        size = 0 if response is None else len(response.content)
+        hint = (
+            "the granule or production stream is wrong"
+            if response is not None and response.status_code == 404
+            else "the server failed; this was retried and kept failing"
+        )
         raise RuntimeError(
-            f"{day.isoformat()}: HTTP {response.status_code} "
-            f"({len(response.content)} bytes) - a wrong stream returns a small "
-            "error document, not an exception"
+            f"{day.isoformat()}: HTTP {status} ({size} bytes) after {attempts} "
+            f"attempt(s) - {hint}"
         )
     # Read from memory rather than a temporary file. netCDF4's in-memory mode
     # still probes the fake filename first and prints an HDF5 error stack.

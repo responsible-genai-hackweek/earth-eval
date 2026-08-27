@@ -170,7 +170,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"WY{wy} done", flush=True)
         except Exception as exc:  # a year may fail without losing the rest
             print(f"WY{wy} FAILED: {type(exc).__name__}: {exc}", flush=True)
-    print("all requested water years attempted", flush=True)
+    # A run that skipped a year must say so. A silent gap in the record is
+    # otherwise only found by reading a directory listing, which is not a check.
+    wanted = set(fetch_order(first, last))
+    have = {
+        int(p.stem.split("WY")[1])
+        for p in CELLS.glob(f"{'era5' if model == 'era5' else 'merra2'}_*.npz")
+    }
+    missing = sorted(wanted - have)
+    if missing:
+        print(f"INCOMPLETE: {len(missing)} water year(s) missing: {missing}", flush=True)
+    else:
+        print(f"complete: all {len(wanted)} water years present", flush=True)
     return 0
 
 
