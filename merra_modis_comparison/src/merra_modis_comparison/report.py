@@ -166,6 +166,8 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
                 path=results / name,
             )))
 
+    # Rank agreement is still computed and reported in the findings; only the
+    # scatter is withheld from the figure set for now, so the function stays.
     shared = sorted(
         {s.water_year for s in stats["era5"]} & {s.water_year for s in stats["merra2"]}
     )
@@ -176,15 +178,6 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             "peak_swe_mm",
         )
         summary["agreement_peak_swe"] = {"rho": rho, "p": p, "n": n}
-        summary["figures"].append(str(model_agreement_scatter(
-            shared,
-            np.array([s.peak_swe_mm for s in stats["era5"] if s.water_year in shared]),
-            np.array([s.peak_swe_mm for s in stats["merra2"] if s.water_year in shared]),
-            rho=rho, p_value=p,
-            title="Peak SWE Rank Agreement, ERA5 vs MERRA-2",
-            highlight=feature_years,
-            path=results / "model_rank_agreement.png",
-        )))
 
     validation = _validation_figure(checkpoints, results)
     if validation:

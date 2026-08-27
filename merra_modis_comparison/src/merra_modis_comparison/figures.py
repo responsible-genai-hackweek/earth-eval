@@ -388,11 +388,13 @@ def validation_series(
                 linewidth=0, zorder=1, label="No Usable Reference",
             )
 
-    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273, 304, 334]
+    # The same October-July window as the spaghetti panels, so a reader moving
+    # between figures compares the same span rather than re-reading the axis.
+    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273]
     ax.set_xticks(ticks)
     ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
-                        "Jun", "Jul", "Aug", "Sep"])
-    ax.set_xlim(0, 365)
+                        "Jun", "Jul"])
+    ax.set_xlim(0, 290)
     ax.set_ylim(0, 1)
     ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY)
     _titles(ax, title)
