@@ -24,7 +24,10 @@ import numpy as np
 
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
-__all__ = ["anomaly_bars", "save", "trajectory", "model_agreement_scatter"]
+__all__ = [
+    "anomaly_bars", "save", "trajectory", "model_agreement_scatter",
+    "validation_series",
+]
 
 # Validated categorical pair, in fixed order.
 ERA5_COLOUR = "#1f6feb"
@@ -277,6 +280,57 @@ def model_agreement_scatter(
         xy=(0.03, 0.03), xycoords="axes fraction",
         fontsize=9, color=INK_SECONDARY,
     )
+    return save(fig, path)
+
+
+def validation_series(
+    days: list[date],
+    series: dict[str, np.ndarray],
+    *,
+    wy: int,
+    title: str,
+    subtitle: str,
+    path: Path,
+) -> Path:
+    """Daily fractional snow cover from the satellite reference and each model.
+
+    The reference is drawn heaviest because it is the thing being validated
+    against, not a third opinion. Gaps are left as gaps: a day with no usable
+    reference is not interpolated across, since the whole point of the panel is
+    to show where the models and the observation part company.
+    """
+    fig, ax = plt.subplots(figsize=(10.5, 4.6))
+    _style(ax)
+
+    x = np.array([_water_day(d, wy) for d in days])
+    styles = {
+        "MODSCAG": dict(color=INK, linewidth=2.2, zorder=6),
+        "ERA5": dict(color=ERA5_COLOUR, linewidth=1.8, zorder=5),
+        "MERRA-2": dict(color=MERRA2_COLOUR, linewidth=1.8, zorder=5),
+    }
+    for name, values in series.items():
+        ax.plot(x, values, label=name, **styles.get(name, dict(linewidth=1.6)))
+
+    reference = series.get("MODSCAG")
+    if reference is not None:
+        missing = ~np.isfinite(reference)
+        if np.any(missing):
+            ax.fill_between(
+                x, 0, 1, where=missing, color=MID_COLOUR, alpha=0.30,
+                linewidth=0, zorder=1, label="no usable reference",
+            )
+
+    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273, 304, 334]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
+                        "Jun", "Jul", "Aug", "Sep"])
+    ax.set_xlim(0, 365)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("fractional snow cover", color=INK_SECONDARY, fontsize=9.5)
+    _titles(ax, title, subtitle)
+    legend = ax.legend(frameon=False, fontsize=9, loc="upper right", ncol=2)
+    for text in legend.get_texts():
+        text.set_color(INK_SECONDARY)
     return save(fig, path)
 
 

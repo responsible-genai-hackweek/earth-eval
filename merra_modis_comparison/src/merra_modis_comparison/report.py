@@ -12,7 +12,12 @@ from pathlib import Path
 
 import numpy as np
 
-from .figures import anomaly_bars, model_agreement_scatter, trajectory
+from .figures import (
+    anomaly_bars,
+    model_agreement_scatter,
+    trajectory,
+    validation_series,
+)
 from .summarize import (
     load_depth_series,
     load_swe_series,
@@ -152,6 +157,10 @@ def build_report(
             path=results / "model_rank_agreement.png",
         )))
 
+    validation = _validation_figure(checkpoints, results)
+    if validation:
+        summary["figures"].append(validation)
+
     for name, label, unit in FIELDS:
         table = ranked(stats["era5"], name)
         for wy in feature_years:
@@ -246,6 +255,48 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
     return path
+
+
+def _validation_figure(checkpoints: Path, results: Path) -> str | None:
+    """Satellite fSCA against both models for the validation water year."""
+    reference_path = results / "wy2023_modscag_domain_fsca.csv"
+    if not reference_path.exists():
+        return None
+    from datetime import date as _date
+
+    with reference_path.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    days = [_date.fromisoformat(r["date"]) for r in rows]
+    index = {d: i for i, d in enumerate(days)}
+    series = {
+        "MODSCAG": np.array(
+            [float(r["domain_fsca"]) if r["domain_fsca"] else np.nan for r in rows]
+        )
+    }
+
+    for model, column in (("era5", "fsca"), ("merra2", "frsno")):
+        path = checkpoints / f"{model}_WY2023.csv"
+        if not path.exists():
+            continue
+        values = np.full(len(days), np.nan)
+        with path.open(newline="") as handle:
+            for row in csv.DictReader(handle):
+                day = _date.fromisoformat(row["date"])
+                raw = row.get(column) or ""
+                if day in index and raw:
+                    values[index[day]] = float(raw)
+        if np.any(np.isfinite(values)):
+            series["ERA5" if model == "era5" else "MERRA-2"] = values
+
+    if len(series) < 2:
+        return None
+    return str(validation_series(
+        days, series, wy=2023,
+        title="Satellite validation, water year 2023",
+        subtitle="Domain-mean fractional snow cover. MODSCAG is the observed "
+                 "reference; ERA5's fraction is diagnosed, not archived.",
+        path=results / "wy2023_validation_fsca.png",
+    ))
 
 
 def _rank(table, wy) -> str:
