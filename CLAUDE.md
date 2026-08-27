@@ -22,4 +22,6 @@ the user instead.
 - `merra_modis_comparison/CLAUDE.md` — project guidance and scientific invariants
 - `merra_modis_comparison/research/` — product research (ported)
 - `merra_modis_comparison/plan/` — the specification to implement (ported)
-- `.claude/skills/` — domain skills, entry point `snow-hydrology-fsca-evaluation`
+- `.claude/skills/` — domain skills. `reanalysis-snowpack-comparison` covers the
+  primary MERRA-2 vs ERA5 analysis; `snow-hydrology-fsca-evaluation` and the
+  three it routes to cover the secondary WY2023 satellite validation.
