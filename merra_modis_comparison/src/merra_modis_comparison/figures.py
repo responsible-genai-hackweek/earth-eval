@@ -54,11 +54,20 @@ def _style(ax) -> None:
 
 
 def _titles(ax, title: str, subtitle: str) -> None:
-    """Place title and subtitle above the axes without letting them collide."""
-    ax.text(0.0, 1.16, title, transform=ax.transAxes, color=INK,
+    """Place title and subtitle above the axes without letting them collide.
+
+    The subtitle is wrapped to the axes width so a long one does not run off the
+    canvas - which a successful render will not tell you about.
+    """
+    import textwrap
+
+    width_in = ax.get_figure().get_size_inches()[0]
+    wrapped = "\n".join(textwrap.wrap(subtitle, width=max(40, int(width_in * 12))))
+    lines = wrapped.count("\n") + 1
+    ax.text(0.0, 1.10 + 0.055 * lines, title, transform=ax.transAxes, color=INK,
             fontsize=13, fontweight="bold", va="top", ha="left")
-    ax.text(0.0, 1.055, subtitle, transform=ax.transAxes, color=INK_SECONDARY,
-            fontsize=9.5, va="top", ha="left")
+    ax.text(0.0, 1.045 + 0.055 * (lines - 1), wrapped, transform=ax.transAxes,
+            color=INK_SECONDARY, fontsize=9.5, va="top", ha="left", linespacing=1.4)
 
 
 def save(fig, path: Path) -> Path:
@@ -176,10 +185,17 @@ def trajectory(
 
     if stacked:
         grid = np.vstack(stacked)
-        with np.errstate(all="ignore"):
-            lo = np.nanpercentile(grid, 10, axis=0)
-            hi = np.nanpercentile(grid, 90, axis=0)
-            mid = np.nanmedian(grid, axis=0)
+        # A day-of-year slot can be empty for every year - 29 February outside a
+        # leap year, or days past the end of a partial record. Reducing those
+        # explicitly says so, rather than leaning on an all-NaN warning.
+        filled = np.any(np.isfinite(grid), axis=0)
+        lo = np.full(grid.shape[1], np.nan)
+        hi = np.full(grid.shape[1], np.nan)
+        mid = np.full(grid.shape[1], np.nan)
+        if np.any(filled):
+            lo[filled] = np.nanpercentile(grid[:, filled], 10, axis=0)
+            hi[filled] = np.nanpercentile(grid[:, filled], 90, axis=0)
+            mid[filled] = np.nanmedian(grid[:, filled], axis=0)
         x = np.arange(366)
         ax.fill_between(x, lo, hi, color=MID_COLOUR, alpha=0.35, linewidth=0, zorder=2,
                         label=f"10th-90th percentile, WY{min(water_years)}-{max(water_years)}")
@@ -256,7 +272,8 @@ def model_agreement_scatter(
     ax.set_aspect("equal")
     _titles(ax, title, subtitle)
     ax.annotate(
-        f"Spearman rho = {rho:.3f}   p = {p_value:.1e}   n = {n}",
+        f"Spearman rho = {rho:.3f}   "
+        f"p {'< 1e-16' if p_value == 0 else f'= {p_value:.1e}'}   n = {n}",
         xy=(0.03, 0.03), xycoords="axes fraction",
         fontsize=9, color=INK_SECONDARY,
     )

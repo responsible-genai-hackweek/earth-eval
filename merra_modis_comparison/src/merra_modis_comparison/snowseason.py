@@ -127,12 +127,19 @@ def rank_ascending(values: np.ndarray) -> np.ndarray:
 
 
 def standardized_anomaly(values: np.ndarray) -> np.ndarray:
-    """Departure from the mean in units of the standard deviation."""
+    """Departure from the mean in units of the standard deviation.
+
+    A field with no finite values - a metric that needs a date the record does
+    not reach, say - has no anomaly, and says so rather than warning.
+    """
     values = np.asarray(values, dtype=float)
-    spread = np.nanstd(values)
-    if not np.isfinite(spread) or spread == 0.0:
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
         return np.full(values.shape, np.nan)
-    return (values - np.nanmean(values)) / spread
+    spread = float(finite.std())
+    if spread == 0.0:
+        return np.full(values.shape, np.nan)
+    return (values - float(finite.mean())) / spread
 
 
 def spearman_rho(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
