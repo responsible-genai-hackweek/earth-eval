@@ -21,9 +21,15 @@ Record: WY1981-WY2026 (46 complete water years), 72 MERRA-2 cells over Colorado.
 
 ## Do the two reanalyses agree?
 
-- **1 April snow depth** rank correlation: rho = 0.833, p = 1.0e-02, n = 8
-- **peak SWE** rank correlation: rho = 0.476, p = 2.3e-01, n = 8
-- **season-mean SWE** rank correlation: rho = 0.524, p = 1.8e-01, n = 8
+- **1 April snow depth** rank correlation: rho = 0.879, p = 8.1e-04, n = 10
+- **peak SWE** rank correlation: rho = 0.685, p = 2.9e-02, n = 10
+- **season-mean SWE** rank correlation: rho = 0.624, p = 5.4e-02, n = 10
 
 Rank, not magnitude. The two models' magnitude ratio varies with how thin the snowpack is, so a ratio quoted without naming the product is not a fact about Colorado.
+
+## Satellite validation, WY2023
+
+347 of 365 days carry a usable MODSCAG reference; 18 have none in the archive and 0 failed to fetch.
+
+- **ERA5 minus MODSCAG** snow-cover fraction, 347 paired days: mean bias +0.161, MAE 0.162. ERA5 publishes no snow-cover fraction, so this is diagnosed from the IFS scheme, which saturates at 0.10 m of depth; a high bias is a property of that diagnostic as much as of the model.
 

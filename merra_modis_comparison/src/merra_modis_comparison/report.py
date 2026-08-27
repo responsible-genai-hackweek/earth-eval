@@ -251,10 +251,68 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
             "",
         ]
 
+    lines += _validation_findings(checkpoints, results)
+
     path = results / "FINDINGS.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
     return path
+
+
+def _validation_findings(checkpoints: Path, results: Path) -> list[str]:
+    """Compare each model's snow-cover fraction with the satellite reference."""
+    from datetime import date as _date
+
+    reference_path = results / "wy2023_modscag_domain_fsca.csv"
+    if not reference_path.exists():
+        return []
+    with reference_path.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    reference = {
+        _date.fromisoformat(r["date"]): float(r["domain_fsca"])
+        for r in rows
+        if r.get("status") == "ok" and r["domain_fsca"]
+    }
+    usable = sum(1 for r in rows if r.get("status") == "ok")
+    absent = sum(1 for r in rows if r.get("status") == "no_reference")
+    failed = sum(1 for r in rows if r.get("status") == "fetch_failed")
+
+    out = [
+        "## Satellite validation, WY2023",
+        "",
+        f"{usable} of {len(rows)} days carry a usable MODSCAG reference; "
+        f"{absent} have none in the archive and {failed} failed to fetch.",
+        "",
+    ]
+    for model, column, label in (("era5", "fsca", "ERA5"), ("merra2", "frsno", "MERRA-2")):
+        path = checkpoints / f"{model}_WY2023.csv"
+        if not path.exists():
+            continue
+        pairs = []
+        with path.open(newline="") as handle:
+            for row in csv.DictReader(handle):
+                day = _date.fromisoformat(row["date"])
+                raw = row.get(column) or ""
+                if day in reference and raw:
+                    pairs.append((float(raw), reference[day]))
+        if len(pairs) < 30:
+            continue
+        model_values = np.array([a for a, _ in pairs])
+        observed = np.array([b for _, b in pairs])
+        bias = float(np.mean(model_values - observed))
+        mae = float(np.mean(np.abs(model_values - observed)))
+        note = (
+            " ERA5 publishes no snow-cover fraction, so this is diagnosed from the "
+            "IFS scheme, which saturates at 0.10 m of depth; a high bias is a "
+            "property of that diagnostic as much as of the model."
+            if model == "era5" else ""
+        )
+        out.append(
+            f"- **{label} minus MODSCAG** snow-cover fraction, {len(pairs)} paired "
+            f"days: mean bias {bias:+.3f}, MAE {mae:.3f}.{note}"
+        )
+    out.append("")
+    return out
 
 
 def _validation_figure(checkpoints: Path, results: Path) -> str | None:
