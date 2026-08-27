@@ -45,6 +45,14 @@ Over the 46 water years both models cover (WY1981-WY2026).
 
 Rank, not magnitude. The two models' magnitude ratio varies with how thin the snowpack is, so a ratio quoted without naming the product is not a fact about Colorado.
 
+## How far apart are the two models?
+
+- **Peak SWE, mean over water years**: ERA5 5.28 in, MERRA-2 1.59 in — a factor of 3.3.
+- **Wettest MERRA-2 year against ERA5's median year**: 3.94 in versus 5.12 in. The two ensembles barely overlap.
+- **Water years where MERRA-2 exceeds ERA5's mean**: 0 of 46.
+
+A ratio between the two is not a fact about the mountains. Quote the product with any figure taken from one of them.
+
 ## By elevation band
 
 A domain mean averages the bands together. Splitting them shows whether a deficit was uniform.

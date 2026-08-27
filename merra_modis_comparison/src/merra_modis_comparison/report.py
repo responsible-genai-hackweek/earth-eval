@@ -16,6 +16,7 @@ from .figures import (
     DRY_COLOUR,
     WET_COLOUR,
     anomaly_bars,
+    model_comparison,
     spaghetti_bands,
     model_agreement_scatter,
     spaghetti,
@@ -190,6 +191,29 @@ def build_report(
                       f"   {min(model_years)}\u2013{max(model_years)}",
                 unit=unit,
                 path=results / name.replace("spaghetti_", "bands_"),
+            )))
+
+    # Both models on shared axes: a per-model figure is drawn to its own scale,
+    # so a difference in magnitude is invisible until they share one.
+    for quantity, loader, convert, unit in (
+        ("swe", load_swe_series, mm_to_in, "Snow Water Equivalent   Inches"),
+        ("depth", load_depth_series, m_to_in, "Snow Depth   Inches"),
+    ):
+        panels = []
+        for model, model_name in (("era5", "ERA5"), ("merra2", "MERRA-2")):
+            years = [s.water_year for s in stats[model]]
+            if years:
+                panels.append((model_name,
+                               _converted(loader(checkpoints, model, years), convert),
+                               years))
+        if len(panels) == 2:
+            shared_years = sorted(set(panels[0][2]) & set(panels[1][2]))
+            summary["figures"].append(str(model_comparison(
+                panels,
+                title="Colorado Rocky Mountains   ERA5 vs MERRA-2"
+                      f"   {min(shared_years)}\u2013{max(shared_years)}",
+                unit=unit,
+                path=results / f"model_comparison_{quantity}.png",
             )))
 
     # Rank agreement is still computed and reported in the findings; only the
@@ -459,6 +483,7 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
             "",
         ]
 
+    lines += _magnitude_findings(checkpoints, water_years)
     lines += _band_findings(checkpoints, water_years, feature_years)
     lines += _validation_findings(checkpoints, results)
 
@@ -466,6 +491,48 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
     return path
+
+
+def _magnitude_findings(checkpoints: Path, water_years) -> list[str]:
+    """How far apart the two models are, and whether their ensembles overlap."""
+    from .snowseason import peak, water_year_slice
+
+    peaks = {}
+    for model, name in (("era5", "ERA5"), ("merra2", "MERRA-2")):
+        series = mm_to_in(np.asarray(
+            load_swe_series(checkpoints, model, water_years).values))
+        raw = load_swe_series(checkpoints, model, water_years)
+        values = []
+        for wy in water_years:
+            year = water_year_slice(raw, wy)
+            if len(year) > 270:
+                top = peak(year)
+                if np.isfinite(top.value):
+                    values.append(float(mm_to_in(top.value)))
+        if values:
+            peaks[name] = np.array(values)
+    if len(peaks) < 2:
+        return []
+
+    era5, merra2 = peaks["ERA5"], peaks["MERRA-2"]
+    out = [
+        "## How far apart are the two models?",
+        "",
+        f"- **Peak SWE, mean over water years**: ERA5 {era5.mean():.2f} in, "
+        f"MERRA-2 {merra2.mean():.2f} in \u2014 a factor of {era5.mean()/merra2.mean():.1f}.",
+        f"- **Wettest MERRA-2 year against ERA5's median year**: "
+        f"{merra2.max():.2f} in versus {np.median(era5):.2f} in. "
+        + ("The two ensembles barely overlap."
+           if merra2.max() < np.median(era5)
+           else "The ensembles overlap."),
+        f"- **Water years where MERRA-2 exceeds ERA5's mean**: "
+        f"{int((merra2 > era5.mean()).sum())} of {merra2.size}.",
+        "",
+        "A ratio between the two is not a fact about the mountains. Quote the "
+        "product with any figure taken from one of them.",
+        "",
+    ]
+    return out
 
 
 def _band_findings(checkpoints: Path, water_years, feature_years) -> list[str]:

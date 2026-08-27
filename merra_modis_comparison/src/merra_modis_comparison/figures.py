@@ -58,13 +58,22 @@ sns.set_theme(
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
-    "anomaly_bars", "model_agreement_scatter", "save",
+    "anomaly_bars", "model_agreement_scatter", "model_comparison", "save",
     "spaghetti", "spaghetti_bands", "validation_series",
 ]
 
-# Validated categorical pair, in fixed order.
-ERA5_COLOUR = "#1f6feb"
-MERRA2_COLOUR = "#e07000"
+# Model identity, deliberately outside the wet/dry ramps below. Using the same
+# blue and orange for both would make a reader carry one meaning across figures
+# and read it as the other - model identity is not wetness.
+#
+# The exact NASA brand pair was tried and measured: NASA blue sits dE 1.8 from
+# the darkest wet shade under normal vision, and NASA red dE 1.1 from the dry
+# orange under deuteranopia, so it mirrors the ramps almost exactly - the
+# opposite of the intent. This pair keeps cool-for-MERRA-2 and red-for-ERA5
+# while actually separating: it passes every check standalone, and against the
+# full set the worst separation is a pair WITHIN the ramps, not one it creates.
+ERA5_COLOUR = "#C2185B"
+MERRA2_COLOUR = "#0097A7"
 # Diverging poles reuse those hues; the midpoint is neutral, never a hue.
 DRY_COLOUR = "#e07000"
 WET_COLOUR = "#1f6feb"
@@ -393,6 +402,57 @@ def _draw_spaghetti(ax, series, water_years, low, high) -> None:
                     solid_capstyle="round", label=str(wy))
 
     ax.set_ylim(bottom=0)
+
+
+def model_comparison(
+    models: list[tuple[str, DailySeries, list[int]]],
+    *,
+    title: str,
+    unit: str,
+    path: Path,
+) -> Path:
+    """Both models' full ensembles on one pair of axes.
+
+    Per-model figures cannot show a difference in magnitude: each is drawn to its
+    own scale, so comparing them means holding two pages side by side and doing
+    the arithmetic by eye. On shared axes the gap is the first thing visible.
+
+    Every water year of each model is drawn thin and translucent in that model's
+    hue, with its ensemble mean bold on top - so the panel shows both the
+    separation between the models and the spread within each, and a reader can
+    see whether the two even overlap.
+    """
+    fig, ax = plt.subplots(figsize=(11.5, 5.4))
+    _style(ax)
+
+    for (name, series, water_years), colour in zip(models, (ERA5_COLOUR, MERRA2_COLOUR)):
+        stack = []
+        for wy in water_years:
+            year = water_year_slice(series, wy)
+            if len(year) == 0:
+                continue
+            x = np.array([_water_day(d, wy) for d in year.dates])
+            ax.plot(x, year.values, color=colour, linewidth=0.6, alpha=0.22, zorder=2,
+                    solid_capstyle="round")
+            stack.append(year.values)
+        if not stack:
+            continue
+        width = max(len(y) for y in stack)
+        grid = np.full((len(stack), width), np.nan)
+        for i, y in enumerate(stack):
+            grid[i, : len(y)] = y
+        filled = np.any(np.isfinite(grid), axis=0)
+        mean = np.full(width, np.nan)
+        mean[filled] = np.nanmean(grid[:, filled], axis=0)
+        ax.plot(np.arange(width), mean, color=colour, linewidth=3.0, zorder=5,
+                solid_capstyle="round", label=name)
+
+    _month_axis(ax)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel(unit, color=INK)
+    _titles(ax, title)
+    _legend(ax)
+    return save(fig, path)
 
 
 def validation_series(
