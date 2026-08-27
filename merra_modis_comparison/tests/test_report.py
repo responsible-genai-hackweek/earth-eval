@@ -102,28 +102,25 @@ class TestPartialYears:
 class TestFetchOrder:
     """A partial run must still answer the question it was started for."""
 
-    def test_feature_years_come_first(self):
+    def test_most_recent_year_comes_first(self):
         from merra_modis_comparison.run_analysis import fetch_order
 
-        order = fetch_order(1981, 2026)
-        assert order[:2] == [2026, 2023]
+        assert fetch_order(2000, 2026)[0] == 2026
 
-    def test_the_rest_run_most_recent_first(self):
+    def test_order_is_strictly_descending(self):
         from merra_modis_comparison.run_analysis import fetch_order
 
-        order = fetch_order(1981, 2026)
-        assert order[2] == 2025
-        assert order[-1] == 1981
+        order = fetch_order(2000, 2026)
+        assert order == sorted(order, reverse=True)
 
     def test_every_year_appears_exactly_once(self):
         from merra_modis_comparison.run_analysis import fetch_order
 
-        order = fetch_order(1981, 2026)
-        assert sorted(order) == list(range(1981, 2027))
+        order = fetch_order(2000, 2026)
+        assert sorted(order) == list(range(2000, 2027))
         assert len(set(order)) == len(order)
 
-    def test_a_range_excluding_a_feature_year_still_works(self):
+    def test_a_single_year_range_works(self):
         from merra_modis_comparison.run_analysis import fetch_order
 
-        order = fetch_order(1990, 2000)
-        assert sorted(order) == list(range(1990, 2001))
+        assert fetch_order(2023, 2023) == [2023]

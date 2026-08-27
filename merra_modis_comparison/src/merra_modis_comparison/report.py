@@ -185,22 +185,36 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
                 if s.n_days >= 270]
         for model in ("era5", "merra2")
     }
-    era5_years = [s.water_year for s in stats["era5"]]
     lines: list[str] = [
         "# Findings",
         "",
         "Generated from the daily checkpoints. Do not edit by hand.",
         "",
-        f"Record: WY{min(era5_years)}-WY{max(era5_years)} "
-        f"({len(era5_years)} complete water years), 72 MERRA-2 cells over Colorado.",
+        "Domain: 72 native MERRA-2 cells over Colorado, 109-104W and 37-41N.",
         "",
     ]
+
+    # The two models cover different periods, so each rank is stated against its
+    # own record. A rank is meaningless without the distribution it is a rank in.
+    for model, entries in stats.items():
+        if not entries:
+            continue
+        years = [s.water_year for s in entries]
+        label = "ERA5" if model == "era5" else "MERRA-2"
+        contiguous = len(years) == max(years) - min(years) + 1
+        lines.append(
+            f"- **{label}**: WY{min(years)}-WY{max(years)}, {len(years)} complete "
+            f"water years{'' if contiguous else ' (not contiguous)'}."
+        )
+    lines.append("")
 
     for model, entries in stats.items():
         if not entries:
             continue
         label = "ERA5" if model == "era5" else "MERRA-2"
         lines += [f"## {label}", ""]
+        years = [s.water_year for s in entries]
+        lines += [f"Ranks below are within WY{min(years)}-WY{max(years)}.", ""]
         for field, name, unit in FIELDS:
             if model == "merra2" and field == "april_first_swe_mm":
                 lines += [
@@ -231,7 +245,13 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
     shared = sorted({s.water_year for s in stats["era5"]}
                     & {s.water_year for s in stats["merra2"]})
     if len(shared) >= 3:
-        lines += ["## Do the two reanalyses agree?", ""]
+        lines += [
+            "## Do the two reanalyses agree?",
+            "",
+            f"Over the {len(shared)} water years both models cover "
+            f"(WY{min(shared)}-WY{max(shared)}).",
+            "",
+        ]
         for field, name, _ in FIELDS:
             if field == "april_first_swe_mm":
                 continue

@@ -143,23 +143,16 @@ def build_merra2_year(wy: int, workers: int = 16) -> None:
     derive_merra2_csv(wy)
 
 
-#: Water years the analysis is actually about. Fetched first, so an interrupted
-#: run still answers the question. A chronological walk would deliver the least
-#: relevant years first and the feature years last, which is the wrong thing to
-#: have when time runs out.
-FEATURE_YEARS = (2026, 2023)
-
-
 def fetch_order(first: int, last: int) -> list[int]:
-    """Feature years first, then most recent to oldest.
+    """Most recent water year first, working backwards.
 
-    Ordering by relevance rather than by date means every partial run is a
-    usable record: the years that carry the claim are already in, and each
-    additional year deepens the climatology from the recent end.
+    Ordering by recency rather than by date ascending means every partial run is
+    a usable record: the years the analysis is about arrive within minutes, and
+    each additional year deepens the climatology from the recent end. A
+    chronological walk delivers the least relevant years first and the feature
+    years last, which is the wrong thing to hold when time runs out.
     """
-    years = [wy for wy in FEATURE_YEARS if first <= wy <= last]
-    years += [wy for wy in range(last, first - 1, -1) if wy not in years]
-    return years
+    return list(range(last, first - 1, -1))
 
 
 def main(argv: list[str] | None = None) -> int:
