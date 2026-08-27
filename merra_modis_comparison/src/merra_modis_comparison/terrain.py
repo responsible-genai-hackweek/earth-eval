@@ -20,6 +20,7 @@ import numpy as np
 
 __all__ = [
     "BAND_SPLIT_FT",
+    "band_label",
     "BAND_SPLIT_M",
     "MOUNTAIN_MIN_ELEVATION_FT",
     "BANDS",
@@ -37,6 +38,11 @@ __all__ = [
 MOUNTAIN_MIN_ELEVATION_FT = 6500.0
 BAND_SPLIT_FT = 8000.0
 
+#: The top of the terrain the upper band covers. Colorado's high peaks reach
+#: this. The DEM's cell means top out far lower, because a MERRA-2 cell averages
+#: a fourteener away - the label describes the mountains, not the smoothing.
+DOMAIN_MAX_ELEVATION_FT = 14500.0
+
 #: Cells whose mean elevation is below this are excluded from domain means.
 #: Stated on every figure rather than buried, because it changes every number.
 MOUNTAIN_MIN_ELEVATION_M = MOUNTAIN_MIN_ELEVATION_FT * 0.3048
@@ -49,8 +55,10 @@ BAND_SPLIT_M = BAND_SPLIT_FT * 0.3048
 #: threshold rather than at zero, because the mask has already removed the
 #: plains - "below" here means the montane band, not the whole lowland.
 BANDS = (
-    ("below", f"Below {BAND_SPLIT_FT:,.0f} ft", MOUNTAIN_MIN_ELEVATION_M, BAND_SPLIT_M),
-    ("above", f"Above {BAND_SPLIT_FT:,.0f} ft", BAND_SPLIT_M, float("inf")),
+    ("below", f"{MOUNTAIN_MIN_ELEVATION_FT:,.0f}\u2013{BAND_SPLIT_FT:,.0f} ft",
+     MOUNTAIN_MIN_ELEVATION_M, BAND_SPLIT_M),
+    ("above", f"{BAND_SPLIT_FT:,.0f}\u2013{DOMAIN_MAX_ELEVATION_FT:,.0f} ft",
+     BAND_SPLIT_M, float("inf")),
 )
 
 
@@ -119,6 +127,18 @@ def band_masks(
         key: np.isfinite(elevation) & (elevation >= low) & (elevation < high)
         for key, _, low, high in BANDS
     }
+
+
+def band_label(
+    key: str, lat_centers: np.ndarray, lon_centers: np.ndarray
+) -> str:
+    """The observed range of cell-mean elevations in one band, in feet."""
+    elevation = cell_mean_elevation(lat_centers, lon_centers)
+    mask = band_masks(lat_centers, lon_centers)[key]
+    if not np.any(mask):
+        return ""
+    feet = elevation[mask] / 0.3048
+    return f"{feet.min():,.0f}\u2013{feet.max():,.0f} ft"
 
 
 def domain_description(lat_centers: np.ndarray, lon_centers: np.ndarray) -> str:

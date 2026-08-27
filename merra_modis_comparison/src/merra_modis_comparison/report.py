@@ -187,7 +187,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             ]
             summary["figures"].append(str(spaghetti_bands(
                 bands, era5_years,
-                title=f"Colorado Rocky Mountains: {label} by Elevation Band, ERA5",
+                title=f"Colorado Rocky Mountains: {label}, ERA5",
                 unit=unit,
                 path=results / name.replace("spaghetti_", "bands_"),
             )))

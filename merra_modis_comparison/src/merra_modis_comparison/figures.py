@@ -88,13 +88,14 @@ def _style(ax, *, grid_axis: str = "y") -> None:
     ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=3, width=0.9)
 
 
-def _titles(ax, title: str) -> None:
+def _titles(ax, title: str, offset: float = 0.0) -> None:
     """Place the title above the axes.
 
     Title only. The domain, the mask and any explanation belong in the figure
-    caption, where they can be edited without re-rendering.
+    caption, where they can be edited without re-rendering. ``offset`` lifts it
+    clear of a panel label in a multi-panel figure.
     """
-    ax.text(0.0, 1.08, title, transform=ax.transAxes, color=INK,
+    ax.text(0.0, 1.08 + offset, title, transform=ax.transAxes, color=INK,
             fontsize=15, fontweight="bold", va="top", ha="left")
 
 
@@ -296,13 +297,21 @@ def spaghetti(
     _month_axis(ax)
     ax.set_ylabel(unit, color=INK_SECONDARY)
     _titles(ax, title)
+    _legend(ax)
+    return save(fig, path)
+
+
+def _legend(ax):
+    """A framed legend: a quiet box, so it reads as a key and not as data."""
     legend = ax.legend(
-        frameon=False, loc="upper left", ncol=2, handlelength=1.7,
-        columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
+        loc="upper left", ncol=2, handlelength=1.7, columnspacing=1.5,
+        labelspacing=0.35, borderpad=0.7,
+        frameon=True, facecolor=SURFACE, edgecolor=GRID, framealpha=1.0,
     )
+    legend.get_frame().set_linewidth(0.9)
     for text in legend.get_texts():
         text.set_color(INK_SECONDARY)
-    return save(fig, path)
+    return legend
 
 
 def spaghetti_bands(
@@ -328,16 +337,13 @@ def spaghetti_bands(
         _style(ax)
         _draw_spaghetti(ax, series, water_years, low, high)
         ax.set_ylabel(unit, color=INK_SECONDARY)
-        ax.text(0.995, 0.94, label, transform=ax.transAxes, ha="right", va="top",
+        # The band sits above its panel, where a panel label belongs, rather
+        # than floating inside the data area.
+        ax.text(0.0, 1.02, label, transform=ax.transAxes, ha="left", va="bottom",
                 fontsize=12, color=INK, fontweight="bold")
         if index == 0:
-            _titles(ax, title)
-            legend = ax.legend(
-                frameon=False, loc="upper left", ncol=2, handlelength=1.7,
-                columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
-            )
-            for text in legend.get_texts():
-                text.set_color(INK_SECONDARY)
+            _titles(ax, title, offset=0.055)
+            _legend(ax)
     _month_axis(axes[-1])
     # A shared y scale is the point - the bands hold different amounts of snow -
     # but sharey alone takes its limit from the first panel, which clips the
@@ -455,7 +461,11 @@ def validation_series(
     ax.set_ylim(0, 1)
     ax.set_ylabel("Fractional Snow Cover", color=INK_SECONDARY)
     _titles(ax, title)
-    legend = ax.legend(frameon=False, fontsize=9, loc="upper right", ncol=2)
+    legend = ax.legend(
+        loc="upper right", ncol=2, borderpad=0.7,
+        frameon=True, facecolor=SURFACE, edgecolor=GRID, framealpha=1.0,
+    )
+    legend.get_frame().set_linewidth(0.9)
     for text in legend.get_texts():
         text.set_color(INK_SECONDARY)
     return save(fig, path)

@@ -49,10 +49,10 @@ Rank, not magnitude. The two models' magnitude ratio varies with how thin the sn
 
 A domain mean averages the bands together. Splitting them shows whether a deficit was uniform.
 
-- **Below 8,000 ft, WY2023 April 1st SWE**: 6.63 in — 297% of the band mean (2.23 in), rank 46 of 46.
-- **Below 8,000 ft, WY2026 April 1st SWE**: 0.12 in — 5% of the band mean (2.23 in), rank 1 of 46.
-- **Above 8,000 ft, WY2023 April 1st SWE**: 8.93 in — 140% of the band mean (6.37 in), rank 42 of 46.
-- **Above 8,000 ft, WY2026 April 1st SWE**: 3.23 in — 51% of the band mean (6.37 in), rank 2 of 46.
+- **6,500–8,000 ft, WY2023 April 1st SWE**: 6.63 in — 297% of the band mean (2.23 in), rank 46 of 46.
+- **6,500–8,000 ft, WY2026 April 1st SWE**: 0.12 in — 5% of the band mean (2.23 in), rank 1 of 46.
+- **8,000–14,500 ft, WY2023 April 1st SWE**: 8.93 in — 140% of the band mean (6.37 in), rank 42 of 46.
+- **8,000–14,500 ft, WY2026 April 1st SWE**: 3.23 in — 51% of the band mean (6.37 in), rank 2 of 46.
 
 ## Satellite validation, WY2023
 
