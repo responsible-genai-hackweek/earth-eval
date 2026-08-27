@@ -1,4 +1,4 @@
-# Repository guidance — Colorado snowpack, MERRA-2 versus ERA5
+# Repository guidance — Colorado Rocky Mountains snowpack, MERRA-2 versus ERA5
 
 ## What this project is
 
@@ -29,7 +29,11 @@ definitions and figure conventions. Read the relevant one before acting.
 ## Scientific invariants
 
 - Domain: the 72 native MERRA-2 cells centred in 109–104°W, 37–41°N. Envelope
-  −109.0625…−104.0625°E, 36.75…41.25°N.
+  −109.0625…−104.0625°E, 36.75…41.25°N. Described as the Colorado Rocky
+  Mountains: median cell elevation 2442 m, 75% of cells above 2000 m. The box
+  is a rectangle, so its eastern column is High Plains (1717 m) and its
+  western column Colorado Plateau (2003 m). Say "Rockies" for the region, not
+  for every cell in it.
 - Both models are averaged over **the same geography**, by fractional-overlap
   area weights. ERA5's 0.25° cells do not align with the envelope, so selecting
   whole cells would compare two different regions.

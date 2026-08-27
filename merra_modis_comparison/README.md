@@ -1,6 +1,7 @@
-# Colorado snowpack in two reanalyses
+# Colorado Rocky Mountains snowpack in two reanalyses
 
-MERRA-2 and ERA5 disagree about how much snow Colorado holds by a factor that
+MERRA-2 and ERA5 disagree about how much snow the Colorado Rockies hold by a
+factor that
 grows as the snowpack thins. They agree closely about which years were extreme.
 This project measures both statements over water years 1981–2026, motivated by
 the question of whether WY2026 was an exceptionally low snowpack year.
@@ -19,7 +20,11 @@ generated from the data.** Nothing in this README restates a value by hand.
 | Daily value | mean of 24 hourly means | 12 UTC sample |
 | Access | Cloud OPeNDAP, Earthdata login | Google Cloud, no credentials |
 
-Domain: the 72 native MERRA-2 cells centred within 109–104°W and 37–41°N.
+Domain: the 72 native MERRA-2 cells centred within 109–104°W and 37–41°N — the
+Colorado Rocky Mountains. Median cell elevation is 2442 m and 75% of cells
+average above 2000 m, but the box is a rectangle, not a range: its eastern
+column reaches the High Plains at 1717 m mean and its western column the
+Colorado Plateau at 2003 m.
 
 ## Three things that silently produce wrong answers
 

@@ -125,7 +125,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_swe_mm for s in stats["era5"]]),
-            title="Colorado April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
+            title="Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
             unit="Snow Water Equivalent (mm)",
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
@@ -134,7 +134,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         summary["figures"].append(str(anomaly_bars(
             era5_years,
             np.array([s.april_first_depth_m for s in stats["era5"]]),
-            title="Colorado April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
+            title="Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
             unit="Snow Depth (m)",
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
@@ -160,7 +160,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
             summary[f"outliers_{name}"] = {"low": low, "high": high}
             summary["figures"].append(str(spaghetti(
                 data, era5_years, low=low, high=high,
-                title=f"Colorado {label} by Water Year, ERA5 "
+                title=f"Colorado Rocky Mountains: {label} by Water Year, ERA5 "
                       f"({min(era5_years)}\u2013{max(era5_years)})",
                 unit=unit,
                 path=results / name,
@@ -212,7 +212,10 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
         "",
         "Generated from the daily checkpoints. Do not edit by hand.",
         "",
-        "Domain: 72 native MERRA-2 cells over Colorado, 109-104W and 37-41N.",
+        "Domain: the Colorado Rocky Mountains, as 72 native MERRA-2 cells spanning",
+        "109-104W and 37-41N. Median cell elevation 2442 m; 75% of cells average",
+        "above 2000 m. The easternmost column reaches onto the High Plains",
+        "(1717 m mean) and the westernmost onto the Colorado Plateau (2003 m).",
         "",
     ]
 
@@ -446,7 +449,7 @@ def _validation_figure(checkpoints: Path, results: Path) -> str | None:
         return None
     return str(validation_series(
         days, series, wy=2023,
-        title="Satellite Validation, Water Year 2023",
+        title="Colorado Rocky Mountains: Satellite Validation, Water Year 2023",
         path=results / "wy2023_validation_fsca.png",
     ))
 
