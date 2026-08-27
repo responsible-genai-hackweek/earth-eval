@@ -180,3 +180,20 @@ class TestShortRecordIsNotRanked:
             write_year(cp, "era5", wy, [10.0 + i] * 365)
         text = write_findings(cp, tmp_path / "res", years, feature_years=(2002,)).read_text()
         assert "3rd lowest" in text
+
+
+class TestBandFindingsTolerateMissingColumns:
+    """A checkpoint predating the bands has no band column, only absence."""
+
+    def test_a_record_without_band_columns_is_skipped_not_averaged(self, tmp_path):
+        from merra_modis_comparison.report import write_findings
+        from tests.test_summarize import write_year
+
+        cp = tmp_path / "cp"
+        cp.mkdir()
+        years = list(range(2010, 2026))
+        for i, wy in enumerate(years):
+            write_year(cp, "era5", wy, [10.0 + i] * 365)
+        text = write_findings(cp, tmp_path / "res", years).read_text()
+        assert "By elevation band" in text
+        assert "nan" not in text.lower()

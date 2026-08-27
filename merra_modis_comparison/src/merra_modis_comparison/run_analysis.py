@@ -26,6 +26,7 @@ from .calendars import enumerate_dates
 from .fetch import domain_mean_of, era5_daily_cells, merra2_daily_cells, open_era5
 from .grid import build_target_grid
 from .regrid import domain_area_weights
+from .terrain import BANDS, band_masks, mountain_mask
 from .snowvars import (
     era5_snow_cover,
     geometric_depth_m,
@@ -42,8 +43,19 @@ CHECKPOINTS = RESULTS / "daily_domain_means"
 MERRA2_LAST_DATE = date(2026, 8, 1)
 
 DOMAIN = (-109.0625, -104.0625, 36.75, 41.25)
-ERA5_COLUMNS = ("date", "stream", "swe_mm_we", "snow_density_kg_m3", "depth_m", "fsca")
-MERRA2_COLUMNS = ("date", "frsno", "snodp_m", "snomas_kg_m2", "depth_m")
+#: Band columns are suffixed onto the masked domain series, so one file per
+#: water year still holds everything derived from that year's cells.
+_BAND_KEYS = tuple(key for key, _, _, _ in BANDS)
+ERA5_COLUMNS = (
+    ("date", "stream", "swe_mm_we", "snow_density_kg_m3", "depth_m", "fsca")
+    + tuple(f"swe_mm_{k}" for k in _BAND_KEYS)
+    + tuple(f"depth_m_{k}" for k in _BAND_KEYS)
+)
+MERRA2_COLUMNS = (
+    ("date", "frsno", "snodp_m", "snomas_kg_m2", "depth_m")
+    + tuple(f"swe_mm_{k}" for k in _BAND_KEYS)
+    + tuple(f"depth_m_{k}" for k in _BAND_KEYS)
+)
 
 
 def cell_path(model: str, wy: int) -> Path:
@@ -73,24 +85,41 @@ def _write_atomic_csv(path: Path, header, rows) -> None:
     tmp.replace(path)
 
 
+def _masked_weights(lat, lon):
+    """Area weights zeroed outside the mountain mask, plus one set per band.
+
+    The mask is a weight rather than a crop, so the grid and every checkpoint
+    stay untouched and the threshold can be changed by re-deriving alone.
+    """
+    area = domain_area_weights(lat, lon, *DOMAIN)
+    masked = area * mountain_mask(lat, lon)
+    bands = {k: area * m for k, m in band_masks(lat, lon).items()}
+    return masked, bands
+
+
 def derive_era5_csv(wy: int) -> None:
     """Rebuild one ERA5 domain-mean CSV from its stored cells. No network."""
     with np.load(cell_path("era5", wy), allow_pickle=False) as data:
         days = [str(d) for d in data["_days"]]
         streams = [str(s) for s in data["_stream"]]
-        weights = domain_area_weights(data["_lat"], data["_lon"], *DOMAIN)
+        weights, bands = _masked_weights(data["_lat"], data["_lon"])
         swe_cells = swe_from_water_equivalent_m(data["snow_depth"])
         density_cells = data["snow_density"]
 
+    depth_cells = geometric_depth_m(swe_cells, density_cells)
     swe = domain_mean_of(swe_cells, weights)
     density = domain_mean_of(density_cells, weights)
     # Derived per cell, then averaged - the mean of a ratio, not a ratio of means.
-    depth = domain_mean_of(geometric_depth_m(swe_cells, density_cells), weights)
+    depth = domain_mean_of(depth_cells, weights)
     fsca = domain_mean_of(era5_snow_cover(swe_cells, density_cells), weights)
+    band_swe = {k: domain_mean_of(swe_cells, w) for k, w in bands.items()}
+    band_depth = {k: domain_mean_of(depth_cells, w) for k, w in bands.items()}
 
     rows = [
         [days[i], streams[i], f"{swe[i]:.6f}", f"{density[i]:.4f}",
          f"{depth[i]:.8f}", f"{fsca[i]:.8f}"]
+        + [f"{band_swe[k][i]:.6f}" for k in _BAND_KEYS]
+        + [f"{band_depth[k][i]:.8f}" for k in _BAND_KEYS]
         for i in range(len(days))
     ]
     _write_atomic_csv(checkpoint_path("era5", wy), ERA5_COLUMNS, rows)
@@ -99,21 +128,26 @@ def derive_era5_csv(wy: int) -> None:
 def derive_merra2_csv(wy: int) -> None:
     """Rebuild one MERRA-2 domain-mean CSV from its stored cells. No network."""
     grid = build_target_grid()
-    weights = domain_area_weights(grid.lat_centers, grid.lon_centers, *DOMAIN)
+    weights, bands = _masked_weights(grid.lat_centers, grid.lon_centers)
     with np.load(cell_path("merra2", wy), allow_pickle=False) as data:
         days = [str(d) for d in data["_days"]]
         frsno_cells = np.clip(data["FRSNO"], 0.0, 1.0)
         snodp_cells = data["SNODP"]
         snomas_cells = data["SNOMAS"]
 
+    depth_cells = grid_mean_depth_m(frsno_cells, snodp_cells)
     frsno = domain_mean_of(frsno_cells, weights)
     snodp = domain_mean_of(snodp_cells, weights)
     snomas = domain_mean_of(snomas_cells, weights)
-    depth = domain_mean_of(grid_mean_depth_m(frsno_cells, snodp_cells), weights)
+    depth = domain_mean_of(depth_cells, weights)
+    band_swe = {k: domain_mean_of(snomas_cells, w) for k, w in bands.items()}
+    band_depth = {k: domain_mean_of(depth_cells, w) for k, w in bands.items()}
 
     rows = [
         [days[i], f"{frsno[i]:.8f}", f"{snodp[i]:.8f}", f"{snomas[i]:.6f}",
          f"{depth[i]:.8f}"]
+        + [f"{band_swe[k][i]:.6f}" for k in _BAND_KEYS]
+        + [f"{band_depth[k][i]:.8f}" for k in _BAND_KEYS]
         for i in range(len(days))
     ]
     _write_atomic_csv(checkpoint_path("merra2", wy), MERRA2_COLUMNS, rows)

@@ -17,12 +17,16 @@ from .figures import (
     WET_COLOUR,
     anomaly_bars,
     collect_pdf,
+    spaghetti_bands,
     model_agreement_scatter,
     spaghetti,
     validation_series,
 )
 from .snowseason import rank_ascending
+from .terrain import BANDS, domain_description
+from .units import m_to_in, mm_to_in
 from .summarize import (
+    load_band_series,
     load_depth_series,
     load_swe_series,
     model_agreement,
@@ -40,11 +44,13 @@ MIN_YEARS_FOR_RANK = 10
 #: Extreme years shaded and labelled at each end of the spaghetti plots.
 N_OUTLIERS = 3
 
+#: Each field with its display label, display unit, and the conversion from the
+#: SI value stored in the checkpoints.
 FIELDS = (
-    ("april_first_swe_mm", "1 April SWE", "mm w.e."),
-    ("april_first_depth_m", "1 April snow depth", "m"),
-    ("peak_swe_mm", "peak SWE", "mm w.e."),
-    ("season_mean_swe_mm", "season-mean SWE", "mm w.e."),
+    ("april_first_swe_mm", "April 1st SWE", "in", mm_to_in),
+    ("april_first_depth_m", "April 1st snow depth", "in", m_to_in),
+    ("peak_swe_mm", "peak SWE", "in", mm_to_in),
+    ("season_mean_swe_mm", "season-mean SWE", "in", mm_to_in),
 )
 
 TABLE_COLUMNS = (
@@ -95,7 +101,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
 
     rows = []
     for model, entries in stats.items():
-        tables = {name: ranked(entries, name) for name, _, _ in FIELDS}
+        tables = {name: ranked(entries, name) for name, _, _, _ in FIELDS}
         for s in entries:
             rows.append([
                 model, s.water_year, s.n_days,
@@ -118,24 +124,30 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
     summary: dict = {"water_years": era5_years, "figures": []}
 
     if era5_years:
-        swe = load_swe_series(checkpoints, "era5", era5_years)
-        depth = load_depth_series(checkpoints, "era5", era5_years)
+        from .grid import build_target_grid
+
+        grid = build_target_grid()
+        grid_lat, grid_lon = grid.lat_centers, grid.lon_centers
+        swe = _converted(load_swe_series(checkpoints, "era5", era5_years), mm_to_in)
+        depth = _converted(load_depth_series(checkpoints, "era5", era5_years), m_to_in)
         span = f"WY{min(era5_years)}–WY{max(era5_years)}"
 
         summary["figures"].append(str(anomaly_bars(
             era5_years,
-            np.array([s.april_first_swe_mm for s in stats["era5"]]),
-            title="Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
-            unit="Snow Water Equivalent (mm)",
+            mm_to_in(np.array([s.april_first_swe_mm for s in stats["era5"]])),
+            title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Water Equivalent, ERA5",
+            unit="Snow Water Equivalent (in)",
+            subtitle=domain_description(*_merra_axes()),
             highlight=feature_years,
             path=results / "april_first_swe_by_water_year.png",
         )))
 
         summary["figures"].append(str(anomaly_bars(
             era5_years,
-            np.array([s.april_first_depth_m for s in stats["era5"]]),
-            title="Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
-            unit="Snow Depth (m)",
+            m_to_in(np.array([s.april_first_depth_m for s in stats["era5"]])),
+            title=r"Colorado Rocky Mountains: April 1$^{\mathrm{st}}$ Snow Depth, ERA5",
+            unit="Snow Depth (in)",
+            subtitle=domain_description(*_merra_axes()),
             highlight=feature_years,
             path=results / "april_first_depth_by_water_year.png",
         )))
@@ -144,11 +156,14 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
         # computed per day-of-year and traces a path no real year followed; each
         # curve here actually happened, and the shape of a year is part of the
         # result.
-        for field, label, unit, data, name in (
+        domain = domain_description(grid_lat, grid_lon)
+        for field, label, unit, data, name, (field_prefix, convert) in (
             ("peak_swe_mm", "Snow Water Equivalent",
-             "Snow Water Equivalent (mm)", swe, "spaghetti_swe.png"),
+             "Snow Water Equivalent (in)", swe, "spaghetti_swe.png",
+             ("swe_mm", mm_to_in)),
             ("april_first_depth_m", "Snow Depth",
-             "Snow Depth (m)", depth, "spaghetti_depth.png"),
+             "Snow Depth (in)", depth, "spaghetti_depth.png",
+             ("depth_m", m_to_in)),
         ):
             ordered = ranked(stats["era5"], field)
             by_rank = sorted(
@@ -162,8 +177,24 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
                 data, era5_years, low=low, high=high,
                 title=f"Colorado Rocky Mountains: {label} by Water Year, ERA5 "
                       f"({min(era5_years)}\u2013{max(era5_years)})",
+                subtitle=domain,
                 unit=unit,
                 path=results / name,
+            )))
+
+            bands = [
+                (band_label,
+                 _converted(load_band_series(
+                     checkpoints, "era5", era5_years, field_prefix, key), convert),
+                 low, high)
+                for key, band_label, _, _ in BANDS
+            ]
+            summary["figures"].append(str(spaghetti_bands(
+                bands, era5_years,
+                title=f"Colorado Rocky Mountains: {label} by Elevation Band, ERA5",
+                subtitle=domain,
+                unit=unit,
+                path=results / name.replace("spaghetti_", "bands_"),
             )))
 
     # Rank agreement is still computed and reported in the findings; only the
@@ -183,7 +214,7 @@ def _build(checkpoints, results, water_years, feature_years, complete_only) -> d
     if validation:
         summary["figures"].append(validation)
 
-    for name, label, unit in FIELDS:
+    for name, label, unit, _convert in FIELDS:
         table = ranked(stats["era5"], name)
         for wy in feature_years:
             if wy in table:
@@ -246,7 +277,7 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
                  "values are reported without ranks.",
             "",
         ]
-        for field, name, unit in FIELDS:
+        for field, name, unit, convert in FIELDS:
             if model == "merra2" and field == "april_first_swe_mm":
                 lines += [
                     f"- **{name}** — omitted deliberately. MERRA-2 melts this "
@@ -262,6 +293,7 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
                 value, rank, anomaly = table[wy]
                 if not np.isfinite(value):
                     continue
+                value = float(convert(value))
                 if n < MIN_YEARS_FOR_RANK:
                     lines.append(
                         f"- **{name}, WY{wy}**: {value:.4g} {unit} — not ranked; "
@@ -275,7 +307,7 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
                     shown if shown % 100 not in (11, 12, 13) else 0, "th"
                 )
                 phrase = f"{end} of {n}" if shown == 1 else f"{shown}{suffix} {end} of {n}"
-                mean = float(np.nanmean([getattr(s, field) for s in entries]))
+                mean = float(convert(np.nanmean([getattr(s, field) for s in entries])))
                 pct = 100.0 * value / mean if mean else float("nan")
                 anomaly_text = f" ({anomaly:+.2f} sd)" if np.isfinite(anomaly) else ""
                 lines.append(
@@ -294,7 +326,7 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
             f"(WY{min(shared)}-WY{max(shared)}).",
             "",
         ]
-        for field, name, _ in FIELDS:
+        for field, name, _, _ in FIELDS:
             if field == "april_first_swe_mm":
                 continue
             rho, pv, n = model_agreement(
@@ -313,12 +345,69 @@ def write_findings(checkpoints: Path, results: Path, water_years: list[int],
             "",
         ]
 
+    lines += _band_findings(checkpoints, water_years, feature_years)
     lines += _validation_findings(checkpoints, results)
 
     path = results / "FINDINGS.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
     return path
+
+
+def _band_findings(checkpoints: Path, water_years, feature_years) -> list[str]:
+    """April 1st SWE by elevation band, which the domain mean averages away."""
+    from .snowseason import april_first, rank_ascending, water_year_slice
+
+    out = [
+        "## By elevation band",
+        "",
+        "A domain mean averages the bands together. Splitting them shows whether "
+        "a deficit was uniform.",
+        "",
+    ]
+    for key, label, _, _ in BANDS:
+        series = load_band_series(checkpoints, "era5", water_years, "swe_mm", key)
+        values, years = [], []
+        for wy in water_years:
+            year = water_year_slice(series, wy)
+            if len(year) > 270:
+                values.append(april_first(year, wy))
+                years.append(wy)
+        values = mm_to_in(np.array(values, dtype=float))
+        finite = values[np.isfinite(values)]
+        # A checkpoint written before bands existed has no band column, so the
+        # series is entirely missing. That is not a band with no snow in it.
+        if len(years) < MIN_YEARS_FOR_RANK or finite.size == 0:
+            continue
+        ranks = rank_ascending(values)
+        mean = float(finite.mean())
+        for wy in feature_years:
+            if wy not in years:
+                continue
+            i = years.index(wy)
+            if not np.isfinite(values[i]):
+                continue
+            out.append(
+                f"- **{label}, WY{wy} April 1st SWE**: {values[i]:.2f} in \u2014 "
+                f"{100 * values[i] / mean:.0f}% of the band mean ({mean:.2f} in), "
+                f"rank {int(ranks[i])} of {len(years)}."
+            )
+    out.append("")
+    return out
+
+
+def _converted(series, convert):
+    """Return a copy of a series with its values in display units."""
+    from .snowseason import DailySeries
+
+    return DailySeries(dates=series.dates, values=convert(np.asarray(series.values)))
+
+
+def _merra_axes():
+    from .grid import build_target_grid
+
+    grid = build_target_grid()
+    return grid.lat_centers, grid.lon_centers
 
 
 def _validation_findings(checkpoints: Path, results: Path) -> list[str]:

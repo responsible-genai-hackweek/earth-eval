@@ -52,7 +52,7 @@ from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
     "anomaly_bars", "collect_pdf", "model_agreement_scatter", "save",
-    "spaghetti", "validation_series",
+    "spaghetti", "spaghetti_bands", "validation_series",
 ]
 
 # Validated categorical pair, in fixed order.
@@ -88,14 +88,18 @@ def _style(ax, *, grid_axis: str = "y") -> None:
     ax.tick_params(colors=INK_SECONDARY, labelsize=9, length=3, width=0.9)
 
 
-def _titles(ax, title: str) -> None:
-    """Place the title above the axes.
+def _titles(ax, title: str, subtitle: str | None = None) -> None:
+    """Place the title, and optionally one line of domain metadata, above the axes.
 
-    Titles only. Explanatory prose belongs in a figure caption, where it can be
-    edited without re-rendering and where a reader expects to find it.
+    The subtitle carries the bounding box and the elevation mask, not prose.
+    Those belong on the figure because they change every number on it;
+    explanation belongs in a caption.
     """
-    ax.text(0.0, 1.08, title, transform=ax.transAxes, color=INK,
-            fontsize=15, fontweight="bold", va="top", ha="left")
+    ax.text(0.0, 1.15 if subtitle else 1.08, title, transform=ax.transAxes,
+            color=INK, fontsize=15, fontweight="bold", va="top", ha="left")
+    if subtitle:
+        ax.text(0.0, 1.055, subtitle, transform=ax.transAxes, color=INK_MUTED,
+                fontsize=10.5, va="top", ha="left")
 
 
 #: When set, every saved figure is also appended to this multi-page document.
@@ -148,6 +152,7 @@ def anomaly_bars(
     values: np.ndarray,
     *,
     title: str,
+    subtitle: str | None = None,
     unit: str,
     highlight: tuple[int, ...] = (),
     path: Path,
@@ -203,7 +208,7 @@ def anomaly_bars(
     ax.set_xlabel("Water Year", color=INK_SECONDARY)
     ax.set_ylabel(unit, color=INK_SECONDARY)
     ax.set_xlim(min(water_years) - 1, max(water_years) + 1)
-    _titles(ax, title)
+    _titles(ax, title, subtitle)
     return save(fig, path)
 
 
@@ -270,8 +275,9 @@ def spaghetti(
     low: tuple[int, ...] = (),
     high: tuple[int, ...] = (),
     title: str,
-    unit: str,
-    path: Path,
+    subtitle: str | None = None,
+    unit: str = "",
+    path: Path = Path("spaghetti.png"),
 ) -> Path:
     """Every water year as one thin line, with chosen years brought forward.
 
@@ -292,6 +298,78 @@ def spaghetti(
     """
     fig, ax = plt.subplots(figsize=(11, 5))
     _style(ax)
+    _draw_spaghetti(ax, series, water_years, low, high)
+    _month_axis(ax)
+    ax.set_ylabel(unit, color=INK_SECONDARY)
+    _titles(ax, title, subtitle)
+    legend = ax.legend(
+        frameon=False, loc="upper left", ncol=2, handlelength=1.7,
+        columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
+    )
+    for text in legend.get_texts():
+        text.set_color(INK_SECONDARY)
+    return save(fig, path)
+
+
+def spaghetti_bands(
+    panels: list[tuple[str, DailySeries, tuple[int, ...], tuple[int, ...]]],
+    water_years: list[int],
+    *,
+    title: str,
+    subtitle: str,
+    unit: str,
+    path: Path,
+) -> Path:
+    """One spaghetti panel per elevation band, stacked on a shared axis.
+
+    Two panels, not many: the question is whether a deficit is elevation
+    dependent at all, and finer bands would leave too few cells in each to
+    answer it. A shared y scale is deliberate - the bands hold different amounts
+    of snow, and that difference is part of what the figure shows.
+    """
+    fig, axes = plt.subplots(
+        len(panels), 1, figsize=(11, 4.1 * len(panels)), sharex=True, sharey=True
+    )
+    axes = np.atleast_1d(axes)
+    for index, (ax, (label, series, low, high)) in enumerate(zip(axes, panels)):
+        _style(ax)
+        _draw_spaghetti(ax, series, water_years, low, high)
+        ax.set_ylabel(unit, color=INK_SECONDARY)
+        ax.text(0.995, 0.94, label, transform=ax.transAxes, ha="right", va="top",
+                fontsize=12, color=INK, fontweight="bold")
+        if index == 0:
+            _titles(ax, title, subtitle)
+            legend = ax.legend(
+                frameon=False, loc="upper left", ncol=2, handlelength=1.7,
+                columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
+            )
+            for text in legend.get_texts():
+                text.set_color(INK_SECONDARY)
+    _month_axis(axes[-1])
+    # A shared y scale is the point - the bands hold different amounts of snow -
+    # but sharey alone takes its limit from the first panel, which clips the
+    # band that holds more. Set it from every panel.
+    top = max(
+        (float(np.nanmax(series.values))
+         for _, series, _, _ in panels
+         if len(series) and np.any(np.isfinite(series.values))),
+        default=1.0,
+    )
+    for ax in axes:
+        ax.set_ylim(0, top * 1.06)
+    fig.subplots_adjust(hspace=0.12)
+    return save(fig, path)
+
+
+def _month_axis(ax) -> None:
+    ax.set_xticks([0, 31, 61, 92, 123, 151, 182, 212, 243, 273])
+    ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
+                        "Jun", "Jul"])
+    ax.set_xlim(0, 290)
+
+
+def _draw_spaghetti(ax, series, water_years, low, high) -> None:
+    """Draw the population, the ensemble mean, and the ranked outliers."""
 
     def curve(wy: int):
         year = water_year_slice(series, wy)
@@ -335,21 +413,7 @@ def spaghetti(
                     linewidth=2.1, zorder=6 - rank * 0.1,
                     solid_capstyle="round", label=str(wy))
 
-    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273]
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
-                        "Jun", "Jul"])
-    ax.set_xlim(0, 290)
     ax.set_ylim(bottom=0)
-    ax.set_ylabel(unit, color=INK_SECONDARY)
-    _titles(ax, title)
-    legend = ax.legend(
-        frameon=False, loc="upper left", ncol=2, handlelength=1.7,
-        columnspacing=1.5, labelspacing=0.35, borderpad=0.0,
-    )
-    for text in legend.get_texts():
-        text.set_color(INK_SECONDARY)
-    return save(fig, path)
 
 
 def validation_series(

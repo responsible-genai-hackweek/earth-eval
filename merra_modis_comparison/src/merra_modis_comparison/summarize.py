@@ -28,6 +28,7 @@ from .snowseason import (
 
 __all__ = [
     "WaterYearStats",
+    "load_band_series",
     "load_depth_series",
     "load_swe_series",
     "model_agreement",
@@ -96,6 +97,28 @@ def load_depth_series(checkpoints: Path, model: str, water_years) -> DailySeries
             # the ratio, and is wrong by about a factor of two in a dry year.
             stored = row.get("depth_m") or ""
             values.append(float(stored) if stored else float("nan"))
+    order = np.argsort(days)
+    return DailySeries(
+        dates=tuple(np.array(days, dtype=object)[order]),
+        values=np.asarray(values, dtype=float)[order],
+    )
+
+
+def load_band_series(
+    checkpoints: Path, model: str, water_years, prefix: str, band: str
+) -> DailySeries:
+    """Load one elevation band's domain-mean series for a stored quantity."""
+    column = f"{prefix}_{band}"
+    days: list[date] = []
+    values: list[float] = []
+    for wy in water_years:
+        path = checkpoints / f"{model}_WY{wy}.csv"
+        if not path.exists():
+            continue
+        for row in _read(path):
+            raw = row.get(column) or ""
+            days.append(date.fromisoformat(row["date"]))
+            values.append(float(raw) if raw else float("nan"))
     order = np.argsort(days)
     return DailySeries(
         dates=tuple(np.array(days, dtype=object)[order]),
