@@ -7,10 +7,19 @@ Research date: 2026-08-26.
 ### ERA5
 
 - CDS dataset: `reanalysis-era5-single-levels`
-- Variable: `snow_cover` (NetCDF short name normally `snowc`), documented as
-  the grid-box fraction occupied by snow. ECMWF parameter metadata uses percent
-  units, so the decoder uses the file `units` attribute to convert percent
-  encodings to a 0–1 comparison fraction.
+- Archived source variables: `snow_depth` (`sd`, metres water equivalent) and
+  `snow_density` (`rsn`, kg m⁻³). The standard single-level catalogue does not
+  offer `snow_cover` as a selectable variable.
+- fSCA method: diagnose the grid-box snow fraction using ECMWF's documented
+  ERA5 equation:
+
+  ```text
+  snow_cover = min(1, (1000 * snow_depth / snow_density) / 0.1)
+  ```
+
+  The constant 1000 is water density in kg m⁻³ and 0.1 m is the physical snow
+  depth for full grid-box coverage in the ERA5 IFS cycle. The decoder requires
+  the documented source units and labels the result `diagnosed_snow_cover`.
 - Time: hourly field at 15:00 UTC for each MODSCAG calendar date
 - Comparison grid: the CDS regular 0.25° latitude/longitude distribution grid
 - Important resolution qualification: this CDS entry is a regular-grid subset
@@ -22,7 +31,7 @@ Official sources:
 
 - [ERA5 hourly single-level catalogue](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels)
 - [ERA5 documentation](https://confluence.ecmwf.int/display/CKB/ERA5%3A+data+documentation)
-- [ECMWF `snowc` parameter record](https://codes.ecmwf.int/grib/param-db/?id=260038)
+- [IFS CY41R2 physical-process documentation](https://www.ecmwf.int/sites/default/files/elibrary/2016/16648-part-iv-physical-processes.pdf)
 
 ### ERA5-Land
 
@@ -48,7 +57,8 @@ Official sources:
 The current official catalogue schemas accept monthly requests containing:
 
 ```text
-variable = snow_cover
+ERA5 variable = [snow_depth, snow_density]
+ERA5-Land variable = snow_cover
 year, month, day
 time = 15:00
 area = [41, -109, 37, -104]
@@ -57,8 +67,8 @@ download_format = unarchived
 ```
 
 ERA5 additionally requires `product_type = reanalysis`; ERA5-Land does not
-expose that request field. The code preserves this distinction rather than
-assuming both CDS datasets have the same form schema.
+expose that request field. The code preserves these request and fSCA-definition
+distinctions rather than assuming both CDS datasets have the same schema.
 
 CDS access requires a personal access token and prior acceptance of the dataset
 licences. Credentials are read by `cdsapi` from `~/.cdsapirc` or `CDSAPI_KEY`.

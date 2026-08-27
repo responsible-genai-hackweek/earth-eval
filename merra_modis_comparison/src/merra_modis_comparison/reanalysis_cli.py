@@ -26,7 +26,7 @@ from .reanalysis_pipeline import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Compare ERA5 and/or ERA5-Land 15Z snow cover with daily "
+            "Compare ERA5 diagnosed and/or ERA5-Land direct 15Z snow cover with daily "
             "STC-MODSCAG on each model's CDS product grid"
         )
     )

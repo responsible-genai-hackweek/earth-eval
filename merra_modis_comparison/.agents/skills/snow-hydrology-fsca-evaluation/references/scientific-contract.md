@@ -35,8 +35,11 @@ Supported model fields:
 - Time index: 15, the hourly mean for 15:00–16:00 UTC, timestamped 15:30 UTC.
 - Filename stream: 300 through 2010, 400 from 2011, except 401 for September
   2020 and June–September 2021 reprocessing.
-- ERA5 CDS dataset `reanalysis-era5-single-levels`, variable `snow_cover`,
-  hourly 15:00 UTC field, on the regular 0.25° CDS distribution grid.
+- ERA5 CDS dataset `reanalysis-era5-single-levels`, variables `snow_depth` and
+  `snow_density`, hourly 15:00 UTC fields on the regular 0.25° CDS distribution
+  grid. Diagnose fSCA with the official equation
+  `min(1, (1000 * snow_depth / snow_density) / 0.1)`; do not substitute depth
+  alone or claim ERA5 archives `snow_cover` directly.
 - ERA5-Land CDS dataset `reanalysis-era5-land`, variable `snow_cover`, hourly
   15:00 UTC field, on the regular 0.1° CDS distribution grid.
 

@@ -66,16 +66,21 @@ transfer.
 
 ### ERA5 and ERA5-Land
 
-The additional model fields are the 15:00 UTC hourly `snow_cover` values from:
+The additional model fSCA values at 15:00 UTC are obtained as follows:
 
-- ERA5 `reanalysis-era5-single-levels` on the CDS regular 0.25° grid
+- ERA5 `reanalysis-era5-single-levels` `snow_depth` and `snow_density` on the
+  CDS regular 0.25° grid
   ([DOI 10.24381/cds.adbb2d47](https://doi.org/10.24381/cds.adbb2d47)); and
 - ERA5-Land `reanalysis-era5-land` on the CDS regular 0.1° grid
   ([DOI 10.24381/cds.e2161bac](https://doi.org/10.24381/cds.e2161bac)).
 
-ECMWF parameter metadata encodes `snowc` in percent. The loader checks the
-NetCDF `units` attribute and converts percent files to a 0–1 fSCA fraction
-before validating the range and computing errors.
+The standard ERA5 single-level archive does not expose `snow_cover`. Following
+the official ERA5 documentation, the loader diagnoses the grid-box fraction as
+`min(1, (1000 × snow_depth / snow_density) / 0.1 m)`, where snow depth is in
+metres water equivalent and density is in kg m⁻³. ERA5-Land directly exposes
+`snow_cover`; percent-encoded files are converted to a 0–1 fraction from their
+NetCDF `units` metadata. Output metadata distinguishes diagnosed ERA5 fSCA from
+direct ERA5-Land fSCA.
 
 The ERA5 CDS grid is a regular-grid distribution product regridded from the
 full ERA5 native representation. ERA5-Land's catalogue describes a 0.1°
@@ -227,9 +232,10 @@ download campaign:
   --preflight-only
 ```
 
-The preflight checks the exact 15Z timestamp, `snow_cover` variable, 0–1 range,
-coordinate order, model-grid identity, and number of cells that can meet the
-MODSCAG archive-support rule. Run the full comparison with:
+The preflight checks the exact 15Z timestamp, ERA5 depth/density diagnostic,
+ERA5-Land `snow_cover`, units, 0–1 range, coordinate order, model-grid identity,
+and number of cells that can meet the MODSCAG archive-support rule. Run the full
+comparison with:
 
 ```bash
 ./run_era5_era5_land_to_completion.zsh

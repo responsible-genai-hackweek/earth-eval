@@ -12,7 +12,9 @@ class ReanalysisModelSpec:
     display_name: str
     dataset_id: str
     variable: str
-    file_variable_candidates: tuple[str, ...]
+    cds_variables: tuple[str, ...]
+    source_variable_candidates: tuple[tuple[str, ...], ...]
+    fsca_method: str
     longitude_step: float
     latitude_step: float
     time_hour_utc: int
@@ -39,14 +41,20 @@ MODEL_SPECS = {
         model_id="era5",
         display_name="ERA5",
         dataset_id="reanalysis-era5-single-levels",
-        variable="snow_cover",
-        file_variable_candidates=("snowc", "snow_cover"),
+        variable="diagnosed_snow_cover",
+        cds_variables=("snow_depth", "snow_density"),
+        source_variable_candidates=(
+            ("sd", "snow_depth"),
+            ("rsn", "snow_density"),
+        ),
+        fsca_method="era5_depth_density_diagnostic",
         longitude_step=0.25,
         latitude_step=0.25,
         time_hour_utc=15,
         product_type="reanalysis",
         product_description=(
-            "reanalysis-era5-single-levels:snow_cover[15:00Z]; "
+            "reanalysis-era5-single-levels:snow_depth+snow_density[15:00Z]; "
+            "ECMWF-documented diagnosed snow cover; "
             "CDS regular 0.25-degree grid"
         ),
         doi="10.24381/cds.adbb2d47",
@@ -56,7 +64,9 @@ MODEL_SPECS = {
         display_name="ERA5-Land",
         dataset_id="reanalysis-era5-land",
         variable="snow_cover",
-        file_variable_candidates=("snowc", "snow_cover"),
+        cds_variables=("snow_cover",),
+        source_variable_candidates=(("snowc", "snow_cover"),),
+        fsca_method="direct_snow_cover",
         longitude_step=0.1,
         latitude_step=0.1,
         time_hour_utc=15,

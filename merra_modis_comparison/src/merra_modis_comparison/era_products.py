@@ -81,7 +81,7 @@ def build_cds_request(
     if len(set(days)) != len(days):
         raise ValueError("CDS request dates must be unique")
     request: dict[str, object] = {
-        "variable": [spec.variable],
+        "variable": list(spec.cds_variables),
         "year": [f"{year:04d}"],
         "month": [f"{month:02d}"],
         "day": [f"{day.day:02d}" for day in sorted(days)],
@@ -147,7 +147,7 @@ def retrieve_reanalysis_field(
             if attempt + 1 < retries:
                 time.sleep(min(2**attempt, 8))
     raise RuntimeError(
-        f"failed to retrieve {spec.display_name} snow cover for "
+        f"failed to retrieve {spec.display_name} fSCA source fields for "
         f"{days[0]:%Y-%m} after {retries} attempts"
     ) from last_error
 
@@ -159,18 +159,162 @@ def _coordinate_name(data_array: Any, candidates: tuple[str, ...]) -> str:
     raise ValueError(f"NetCDF field lacks a {candidates[0]} coordinate")
 
 
-def _snow_variable(dataset: Any, spec: ReanalysisModelSpec) -> Any:
+def _source_variable(
+    dataset: Any,
+    spec: ReanalysisModelSpec,
+    source_index: int,
+) -> Any:
     lower_lookup = {str(name).lower(): name for name in dataset.data_vars}
-    for candidate in spec.file_variable_candidates:
+    candidates = spec.source_variable_candidates[source_index]
+    for candidate in candidates:
         key = lower_lookup.get(candidate.lower())
         if key is not None:
             return dataset[key]
-    if len(dataset.data_vars) == 1:
+    if len(spec.source_variable_candidates) == 1 and len(dataset.data_vars) == 1:
         return dataset[next(iter(dataset.data_vars))]
     raise ValueError(
-        f"{spec.display_name} NetCDF lacks expected snow-cover variable; "
+        f"{spec.display_name} NetCDF lacks expected source variable "
+        f"{spec.cds_variables[source_index]!r}; "
         f"found {tuple(dataset.data_vars)}"
     )
+
+
+@dataclass(frozen=True)
+class _DecodedSource:
+    values: np.ndarray
+    units: str
+    latitudes: np.ndarray
+    longitudes: np.ndarray
+    times: np.ndarray
+
+
+def _decode_source(
+    dataset: Any,
+    spec: ReanalysisModelSpec,
+    source_index: int,
+) -> _DecodedSource:
+    field = _source_variable(dataset, spec, source_index)
+    time_name = _coordinate_name(field, ("valid_time", "time"))
+    latitude_name = _coordinate_name(field, ("latitude", "lat"))
+    longitude_name = _coordinate_name(field, ("longitude", "lon"))
+    required = {time_name, latitude_name, longitude_name}
+    for dimension in tuple(field.dims):
+        if dimension in required:
+            continue
+        if field.sizes[dimension] != 1:
+            raise ValueError(
+                f"unexpected non-singleton {dimension} dimension in "
+                f"{spec.display_name} {spec.cds_variables[source_index]}"
+            )
+        field = field.isel({dimension: 0}, drop=True)
+    field = field.transpose(time_name, latitude_name, longitude_name).load()
+    values = np.asarray(field.values, dtype=np.float64)
+    units = str(field.attrs.get("units", "")).strip().lower()
+    latitudes = np.asarray(field[latitude_name].values, dtype=np.float64)
+    longitudes = np.asarray(field[longitude_name].values, dtype=np.float64)
+    times = np.asarray(field[time_name].values).astype("datetime64[ns]")
+
+    normalized_longitudes = (longitudes + 180.0) % 360.0 - 180.0
+    latitude_order = np.argsort(latitudes)
+    longitude_order = np.argsort(normalized_longitudes)
+    return _DecodedSource(
+        values=values[:, latitude_order, :][:, :, longitude_order],
+        units=units,
+        latitudes=latitudes[latitude_order],
+        longitudes=normalized_longitudes[longitude_order],
+        times=times,
+    )
+
+
+def _validate_source_inventory(
+    source: _DecodedSource,
+    spec: ReanalysisModelSpec,
+    grid: RegularLatLonGrid,
+    expected_times: np.ndarray,
+) -> None:
+    if source.values.shape[1:] != grid.shape:
+        raise ValueError(
+            f"unexpected {spec.display_name} grid shape {source.values.shape[1:]}; "
+            f"expected {grid.shape}"
+        )
+    coordinate_tolerance = min(spec.longitude_step, spec.latitude_step) * 1e-5
+    if not np.allclose(
+        source.latitudes, grid.lats, rtol=0, atol=coordinate_tolerance
+    ):
+        raise ValueError(f"{spec.display_name} latitudes do not match target grid")
+    if not np.allclose(
+        source.longitudes, grid.lons, rtol=0, atol=coordinate_tolerance
+    ):
+        raise ValueError(f"{spec.display_name} longitudes do not match target grid")
+    if (
+        source.times.shape != expected_times.shape
+        or not np.array_equal(source.times, expected_times)
+    ):
+        rendered = tuple(
+            np.datetime_as_string(value, unit="m") for value in source.times[:3]
+        )
+        raise ValueError(
+            f"{spec.display_name} timestamps differ from requested daily 15Z "
+            f"inventory; first returned values={rendered}"
+        )
+
+
+def _direct_snow_cover(source: _DecodedSource, spec: ReanalysisModelSpec) -> np.ndarray:
+    values = source.values.copy()
+    finite = np.isfinite(values)
+    percent_units = (
+        source.units in {"%", "percent", "percentage"} or "%" in source.units
+    )
+    if finite.any() and percent_units:
+        values[finite] /= 100.0
+    if finite.any():
+        minimum = float(values[finite].min())
+        maximum = float(values[finite].max())
+        if minimum < -1e-4 or maximum > 1.0001:
+            raise ValueError(
+                f"{spec.display_name} snow cover falls outside 0-1 after "
+                f"units-aware conversion (units={source.units!r}): "
+                f"[{minimum}, {maximum}]"
+            )
+        values[finite] = np.clip(values[finite], 0.0, 1.0)
+    values[~finite] = np.nan
+    return values
+
+
+def _diagnose_era5_snow_cover(
+    snow_depth: _DecodedSource,
+    snow_density: _DecodedSource,
+) -> np.ndarray:
+    """Apply ECMWF's ERA5 gridbox snow-cover diagnostic in fraction units."""
+
+    accepted_depth_units = {"m of water equivalent", "m water equivalent", "mwe"}
+    if snow_depth.units not in accepted_depth_units:
+        raise ValueError(
+            "ERA5 snow_depth must be in metres of water equivalent; "
+            f"received units={snow_depth.units!r}"
+        )
+    compact_density_units = snow_density.units.replace(" ", "")
+    if compact_density_units not in {"kgm**-3", "kgm^-3", "kgm-3", "kg/m^3"}:
+        raise ValueError(
+            "ERA5 snow_density must be in kg m^-3; "
+            f"received units={snow_density.units!r}"
+        )
+
+    depth = snow_depth.values
+    density = snow_density.values
+    finite_depth = np.isfinite(depth)
+    if np.any(depth[finite_depth] < -1e-8):
+        raise ValueError("ERA5 snow_depth contains materially negative values")
+    positive_depth = finite_depth & (depth > 1e-12)
+    valid_density = np.isfinite(density) & (density > 0.0)
+    if np.any(positive_depth & ~valid_density):
+        raise ValueError("ERA5 positive snow_depth has missing or nonpositive density")
+
+    values = np.full(depth.shape, np.nan, dtype=np.float64)
+    values[finite_depth & ~positive_depth] = 0.0
+    diagnosed = 1000.0 * depth[positive_depth] / density[positive_depth] / 0.1
+    values[positive_depth] = np.minimum(1.0, diagnosed)
+    return values
 
 
 def load_reanalysis_field(
@@ -185,46 +329,10 @@ def load_reanalysis_field(
         raise RuntimeError("xarray is required to read CDS NetCDF output") from exc
 
     with xr.open_dataset(path) as dataset:
-        field = _snow_variable(dataset, spec)
-        time_name = _coordinate_name(field, ("valid_time", "time"))
-        latitude_name = _coordinate_name(field, ("latitude", "lat"))
-        longitude_name = _coordinate_name(field, ("longitude", "lon"))
-        required = {time_name, latitude_name, longitude_name}
-        for dimension in tuple(field.dims):
-            if dimension in required:
-                continue
-            if field.sizes[dimension] != 1:
-                raise ValueError(
-                    f"unexpected non-singleton {dimension} dimension in "
-                    f"{spec.display_name} snow cover"
-                )
-            field = field.isel({dimension: 0}, drop=True)
-        field = field.transpose(time_name, latitude_name, longitude_name).load()
-        values = np.asarray(field.values, dtype=np.float64)
-        units = str(field.attrs.get("units", "")).strip().lower()
-        latitudes = np.asarray(field[latitude_name].values, dtype=np.float64)
-        longitudes = np.asarray(field[longitude_name].values, dtype=np.float64)
-        times = np.asarray(field[time_name].values).astype("datetime64[ns]")
-
-    normalized_longitudes = (longitudes + 180.0) % 360.0 - 180.0
-    latitude_order = np.argsort(latitudes)
-    longitude_order = np.argsort(normalized_longitudes)
-    latitudes = latitudes[latitude_order]
-    normalized_longitudes = normalized_longitudes[longitude_order]
-    values = values[:, latitude_order, :][:, :, longitude_order]
-
-    if values.shape[1:] != grid.shape:
-        raise ValueError(
-            f"unexpected {spec.display_name} grid shape {values.shape[1:]}; "
-            f"expected {grid.shape}"
+        sources = tuple(
+            _decode_source(dataset, spec, source_index)
+            for source_index in range(len(spec.cds_variables))
         )
-    coordinate_tolerance = min(spec.longitude_step, spec.latitude_step) * 1e-5
-    if not np.allclose(latitudes, grid.lats, rtol=0, atol=coordinate_tolerance):
-        raise ValueError(f"{spec.display_name} latitudes do not match target grid")
-    if not np.allclose(
-        normalized_longitudes, grid.lons, rtol=0, atol=coordinate_tolerance
-    ):
-        raise ValueError(f"{spec.display_name} longitudes do not match target grid")
 
     expected_times = np.asarray(
         [
@@ -234,27 +342,18 @@ def load_reanalysis_field(
             for day in expected_dates
         ]
     )
-    if times.shape != expected_times.shape or not np.array_equal(times, expected_times):
-        rendered = tuple(np.datetime_as_string(value, unit="m") for value in times[:3])
-        raise ValueError(
-            f"{spec.display_name} timestamps differ from requested daily 15Z "
-            f"inventory; first returned values={rendered}"
-        )
-
-    finite = np.isfinite(values)
-    percent_units = units in {"%", "percent", "percentage"} or "%" in units
-    if finite.any() and percent_units:
-        values[finite] /= 100.0
-    if finite.any():
-        minimum = float(values[finite].min())
-        maximum = float(values[finite].max())
-        if minimum < -1e-4 or maximum > 1.0001:
-            raise ValueError(
-                f"{spec.display_name} snow cover falls outside 0-1 after "
-                f"units-aware conversion (units={units!r}): [{minimum}, {maximum}]"
-            )
-        values[finite] = np.clip(values[finite], 0.0, 1.0)
-    values[~finite] = np.nan
+    for source in sources:
+        _validate_source_inventory(source, spec, grid, expected_times)
+    if spec.fsca_method == "direct_snow_cover":
+        if len(sources) != 1:
+            raise ValueError("direct snow-cover products require one source field")
+        values = _direct_snow_cover(sources[0], spec)
+    elif spec.fsca_method == "era5_depth_density_diagnostic":
+        if len(sources) != 2:
+            raise ValueError("ERA5 diagnostic requires snow depth and density")
+        values = _diagnose_era5_snow_cover(sources[0], sources[1])
+    else:
+        raise ValueError(f"unknown fSCA method: {spec.fsca_method}")
     return MonthlyModelField(
         model_id=spec.model_id,
         dates=expected_dates,

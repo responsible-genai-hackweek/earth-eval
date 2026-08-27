@@ -14,8 +14,9 @@ user-visible scientific or operational changes.
 
 - Reference daily STC-MODSCAG v1 `snow_fraction` against the reviewed 15Z
   model field: MERRA-2 `M2T1NXLND.5.12.4:FRSNO` at index 15
-  (15:00–16:00 UTC), or hourly `snow_cover` at 15:00 UTC from ERA5 or
-  ERA5-Land.
+  (15:00–16:00 UTC), ERA5 fSCA diagnosed at 15:00 UTC from `snow_depth` and
+  `snow_density` with ECMWF's documented equation, or ERA5-Land `snow_cover`
+  at 15:00 UTC.
 - Aggregate equal-area 500 m MODSCAG pixel centers separately to the selected
   model product grid: 0.625° × 0.5° MERRA-2, 0.25° CDS ERA5, or 0.1° CDS
   ERA5-Land. Do not interpolate a model down to MODIS resolution.

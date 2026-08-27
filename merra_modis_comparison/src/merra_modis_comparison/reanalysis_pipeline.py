@@ -407,7 +407,8 @@ def preflight(config: ReanalysisRunConfig) -> None:
     print(
         "preflight passed: "
         f"{len(config.dates)} dates, {len(config.calendar_months)} months, "
-        f"{grid_summary}; hourly snow_cover at 15:00 UTC",
+        f"{grid_summary}; model fSCA at 15:00 UTC "
+        "(ERA5 diagnosed from snow depth+density; ERA5-Land direct snow_cover)",
         flush=True,
     )
 

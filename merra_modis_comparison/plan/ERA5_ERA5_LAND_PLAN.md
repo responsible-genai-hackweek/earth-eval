@@ -1,14 +1,15 @@
 # ERA5 and ERA5-Land extension plan
 
-Status: **implemented; live CDS preflight awaits local CDS credentials**
+Status: **implemented; authenticated live preflight passed 2026-08-26**
 
 ## 1. Scientific contract
 
 - Period: water years 2010–2023, matching the homogeneous historical
   STC-MODSCAG v1 record.
 - Domain: cells whose centers fall within 109–104°W and 37–41°N.
-- Models: ERA5 `snow_cover` on the CDS 0.25° grid and ERA5-Land `snow_cover`
-  on the CDS 0.1° grid.
+- Models: ERA5 fSCA diagnosed from `snow_depth` and `snow_density` on the CDS
+  0.25° grid using ECMWF's documented equation, and ERA5-Land `snow_cover` on
+  the CDS 0.1° grid.
 - Time: each product's 15:00 UTC hourly field, paired to the same MODSCAG date.
 - Reference aggregation: equal-area MODSCAG pixel-center binning separately to
   each model grid, followed by the existing 80% support rule.
@@ -22,8 +23,8 @@ Status: **implemented; live CDS preflight awaits local CDS credentials**
   reuse them for both model-grid reductions.
 - Limit the shared MODSCAG FTP gate to eight connections and the shared CDS
   monthly-retrieval gate to four connections.
-- Retrieve only one variable, one UTC hour, one month, and the requested spatial
-  subset from CDS.
+- Retrieve only the minimum source fields (two for ERA5, one for ERA5-Land), one
+  UTC hour, one month, and the requested spatial subset from CDS.
 - Hold decoded monthly model arrays in worker memory; delete their NetCDF files
   with the task temporary directory. Delete daily MODSCAG files immediately
   after both model reductions.
@@ -53,8 +54,9 @@ model-specific target coordinates and are never forced onto the MERRA-2 grid.
 ## 5. Validation gates
 
 1. Compare request keys to the official CDS catalogue forms.
-2. Decode a real one-day subset for each product and verify variable, exact 15Z
-   timestamp, coordinate order, target-grid match, and 0–1 range.
+2. Decode a real one-day subset for each product and verify source variables,
+   units, ERA5 diagnostic, exact 15Z timestamp, coordinate order, target-grid
+   match, and 0–1 range.
 3. Validate synthetic NetCDF handling for descending latitude and 0–360
    longitude conventions.
 4. Test grid construction, weighted/normalized statistics, atomic checkpoint
@@ -63,6 +65,6 @@ model-specific target coordinates and are never forced onto the MERRA-2 grid.
 6. Before a full campaign, run the authenticated preflight and inspect its
    report of cells capable of meeting the MODSCAG archive-support threshold.
 
-The code and synthetic validation are complete. Gate 2 cannot run on this host
-until `~/.cdsapirc` or `CDSAPI_KEY` is configured and both CDS licences have
-been accepted.
+All gates pass. The authenticated one-day live preflight returned the expected
+ERA5 17×21 and ERA5-Land 41×51 Colorado arrays at exactly 15:00 UTC and produced
+finite 0–1 fSCA values with the documented direct/diagnosed methods.

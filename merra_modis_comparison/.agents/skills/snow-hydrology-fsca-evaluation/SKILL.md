@@ -27,7 +27,8 @@ checkpoint metadata.
 ## Preserve these core decisions
 
 - Compare daily STC-MODSCAG `snow_fraction` with the reviewed model field:
-  MERRA-2 `FRSNO` at index 15 (15:00–16:00 UTC), or the ERA5/ERA5-Land hourly
+  MERRA-2 `FRSNO` at index 15 (15:00–16:00 UTC), ERA5 fSCA diagnosed from its
+  hourly 15:00 UTC `snow_depth` and `snow_density`, or the ERA5-Land hourly
   `snow_cover` field at 15:00 UTC.
 - Aggregate the equal-area 500 m MODSCAG pixels to the selected model product
   grid. Do not interpolate a model down to MODIS resolution and call the

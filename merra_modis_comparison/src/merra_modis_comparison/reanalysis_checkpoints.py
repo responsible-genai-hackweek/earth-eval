@@ -20,7 +20,7 @@ from .reanalysis_metrics import (
 )
 
 
-CHECKPOINT_SCHEMA = "1"
+CHECKPOINT_SCHEMA = "2"
 REFERENCE_PRODUCT = "STC_MODSCGDRF_HIST_v1:snow_fraction"
 MODEL_TIME = "hourly field at 15:00 UTC"
 
