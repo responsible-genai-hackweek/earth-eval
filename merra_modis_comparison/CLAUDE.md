@@ -14,6 +14,11 @@ record, so no product splice or near-real-time era is involved. The archived
 plans `plan/FSCA_PIPELINE_PLAN.md` and `plan/MULTIYEAR_2010_2023_PLAN.md`
 describe an earlier, superseded experiment and are left unedited as its record.
 
+The `clinton` branch holds a separate, complete implementation of that
+superseded fSCA experiment. It is a legitimate cross-reference for the WY2023
+validation and is not off-limits; the coding-agent comparison that once made it
+so was abandoned when the scope changed.
+
 ## Skills
 
 The three domain skills under `.claude/skills/` were written for the fSCA
