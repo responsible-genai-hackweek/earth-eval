@@ -406,9 +406,10 @@ def validation_series(
     """Daily fractional snow cover from the satellite reference and each model.
 
     The reference is drawn heaviest because it is the thing being validated
-    against, not a third opinion. Gaps are left as gaps: a day with no usable
-    reference is not interpolated across, since the whole point of the panel is
-    to show where the models and the observation part company.
+    against, not a third opinion. Gaps are still left as gaps - a day with no
+    usable reference is never interpolated across - but they are not shaded or
+    labelled. The point of this panel is the distance between the two models,
+    and an annotated eighteen-day archive gap competes with it for attention.
     """
     fig, ax = plt.subplots(figsize=(11.5, 5.0))
     _style(ax)
@@ -421,15 +422,6 @@ def validation_series(
     }
     for name, values in series.items():
         ax.plot(x, values, label=name, **styles.get(name, dict(linewidth=1.6)))
-
-    reference = series.get("MODSCAG")
-    if reference is not None:
-        missing = ~np.isfinite(reference)
-        if np.any(missing):
-            ax.fill_between(
-                x, 0, 1, where=missing, color=MID_COLOUR, alpha=0.30,
-                linewidth=0, zorder=1, label="No Usable Reference",
-            )
 
     # The same October-July window as the spaghetti panels, so a reader moving
     # between figures compares the same span rather than re-reading the axis.
