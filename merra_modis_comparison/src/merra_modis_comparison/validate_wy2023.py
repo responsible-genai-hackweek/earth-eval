@@ -130,7 +130,7 @@ def build_wy2023_reference(results: Path, workers: int = 6) -> Path:
             ])
 
     rows.sort(key=lambda r: r[0])
-    path = results / "wy2023_modscag_domain_fsca.csv"
+    path = results / "water_year_2023_modscag_reference.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(f".tmp{os.getpid()}")
     with tmp.open("w", newline="") as handle:

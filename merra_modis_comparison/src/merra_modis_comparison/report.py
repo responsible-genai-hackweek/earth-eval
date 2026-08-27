@@ -21,6 +21,7 @@ from .figures import (
     spaghetti,
     validation_series,
 )
+from .calendars import water_year as water_year_of
 from .snowseason import rank_ascending
 from .terrain import BANDS, domain_description
 from .units import m_to_in, mm_to_in
@@ -33,7 +34,7 @@ from .summarize import (
     summarize_model,
 )
 
-__all__ = ["build_report", "write_findings"]
+__all__ = ["build_report", "write_findings", "write_plot_data"]
 
 #: Fewest water years that make a rank worth stating. Below this the record is
 #: reported as a value with its period, and no rank: "lowest of 3" invites a
@@ -112,7 +113,7 @@ def build_report(
                 s.melt_out.isoformat() if s.melt_out else "",
             ])
     rows.sort(key=lambda r: (r[0], r[1]))
-    _write_atomic(results / "water_year_statistics.csv", TABLE_COLUMNS, rows)
+    _write_atomic(results / "water_year_1981_2026_annual_stats.csv", TABLE_COLUMNS, rows)
 
     era5_years = [s.water_year for s in stats["era5"]]
     summary: dict = {"water_years": era5_years, "figures": []}
@@ -217,6 +218,125 @@ def build_report(
                     "anomaly_sd": anomaly, "unit": unit, "label": label,
                 }
     return summary
+
+
+def write_plot_data(checkpoints: Path, results: Path, water_years: list[int]) -> list[Path]:
+    """Write the exact series each figure draws, in the figure's display units.
+
+    The checkpoints already hold everything, but they hold it per water year and
+    in SI. These are the plotted numbers: one file per figure, so a plot can be
+    reproduced or re-drawn elsewhere without rerunning the pipeline.
+    """
+    from .snowseason import april_first, rank_ascending, water_year_slice
+
+    scope = f"water_year_{min(water_years)}_{max(water_years)}"
+    written: list[Path] = []
+
+    series = {
+        "swe": (load_swe_series(checkpoints, "era5", water_years), mm_to_in, "swe_in"),
+        "depth": (load_depth_series(checkpoints, "era5", water_years), m_to_in, "depth_in"),
+    }
+    for name, (raw, convert, column) in series.items():
+        rows = [
+            [day.isoformat(), water_year_of(day), f"{value:.6f}"]
+            for day, value in zip(raw.dates, convert(np.asarray(raw.values)))
+            if np.isfinite(value)
+        ]
+        written.append(_csv(results / f"{scope}_daily_{name}.csv",
+                            ("date", "water_year", column), rows))
+
+    for name, prefix, convert, column in (
+        ("swe", "swe_mm", mm_to_in, "swe_in"),
+        ("depth", "depth_m", m_to_in, "depth_in"),
+    ):
+        rows = []
+        for key, label, _, _ in BANDS:
+            band = load_band_series(checkpoints, "era5", water_years, prefix, key)
+            rows += [
+                [day.isoformat(), water_year_of(day), label, f"{value:.6f}"]
+                for day, value in zip(band.dates, convert(np.asarray(band.values)))
+                if np.isfinite(value)
+            ]
+        rows.sort(key=lambda r: (r[2], r[0]))
+        written.append(_csv(results / f"{scope}_daily_{name}_by_band.csv",
+                            ("date", "water_year", "elevation_band", column), rows))
+
+    # April 1st values, with the rank each figure annotates
+    stats = [s for s in summarize_model(checkpoints, "era5", water_years)
+             if s.n_days >= 270]
+    years = [s.water_year for s in stats]
+    swe = mm_to_in(np.array([s.april_first_swe_mm for s in stats]))
+    depth = m_to_in(np.array([s.april_first_depth_m for s in stats]))
+    swe_rank, depth_rank = rank_ascending(swe), rank_ascending(depth)
+    rows = [
+        [years[i], f"{swe[i]:.6f}", _int(swe_rank[i]), f"{depth[i]:.6f}", _int(depth_rank[i])]
+        for i in range(len(years))
+    ]
+    written.append(_csv(results / f"{scope}_april_first.csv",
+                        ("water_year", "swe_in", "swe_rank", "depth_in", "depth_rank"), rows))
+
+    # April 1st by band, the elevation finding
+    band_rows = []
+    for key, label, _, _ in BANDS:
+        band = load_band_series(checkpoints, "era5", water_years, "swe_mm", key)
+        values, years_b = [], []
+        for wy in water_years:
+            year = water_year_slice(band, wy)
+            if len(year) > 270:
+                values.append(april_first(year, wy))
+                years_b.append(wy)
+        if not years_b:
+            continue
+        values = mm_to_in(np.array(values, dtype=float))
+        ranks = rank_ascending(values)
+        band_rows += [
+            [years_b[i], label, f"{values[i]:.6f}", _int(ranks[i])]
+            for i in range(len(years_b))
+        ]
+    written.append(_csv(results / f"{scope}_april_first_by_band.csv",
+                        ("water_year", "elevation_band", "swe_in", "rank"), band_rows))
+
+    written.append(_validation_csv(checkpoints, results))
+    return [p for p in written if p is not None]
+
+
+def _validation_csv(checkpoints: Path, results: Path) -> Path | None:
+    """The satellite validation series: reference and both models, one file."""
+    from datetime import date as _date
+
+    reference = results / "water_year_2023_modscag_reference.csv"
+    if not reference.exists():
+        return None
+    with reference.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    days = [_date.fromisoformat(r["date"]) for r in rows]
+    index = {d: i for i, d in enumerate(days)}
+    columns = {"modscag_fsca": [r["domain_fsca"] for r in rows]}
+    for model, column, label in (("era5", "fsca", "era5_fsca"),
+                                 ("merra2", "frsno", "merra2_fsca")):
+        path = checkpoints / f"{model}_WY2023.csv"
+        if not path.exists():
+            continue
+        values = [""] * len(days)
+        with path.open(newline="") as handle:
+            for row in csv.DictReader(handle):
+                day = _date.fromisoformat(row["date"])
+                if day in index:
+                    values[index[day]] = row.get(column) or ""
+        columns[label] = values
+    names = list(columns)
+    out = [[days[i].isoformat()] + [columns[n][i] for n in names] for i in range(len(days))]
+    return _csv(results / "water_year_2023_satellite_validation.csv",
+                ("date", *names), out)
+
+
+def _int(value) -> str:
+    return "" if not np.isfinite(value) else str(int(value))
+
+
+def _csv(path: Path, header, rows) -> Path:
+    _write_atomic(path, header, rows)
+    return path
 
 
 def write_findings(checkpoints: Path, results: Path, water_years: list[int],
@@ -407,7 +527,7 @@ def _validation_findings(checkpoints: Path, results: Path) -> list[str]:
     """Compare each model's snow-cover fraction with the satellite reference."""
     from datetime import date as _date
 
-    reference_path = results / "wy2023_modscag_domain_fsca.csv"
+    reference_path = results / "water_year_2023_modscag_reference.csv"
     if not reference_path.exists():
         return []
     with reference_path.open(newline="") as handle:
@@ -469,7 +589,7 @@ def _melt_out_inputs(checkpoints: Path, results: Path) -> dict:
     from datetime import date as _date
 
     series: dict[str, list[tuple]] = {}
-    with (results / "wy2023_modscag_domain_fsca.csv").open(newline="") as handle:
+    with (results / "water_year_2023_modscag_reference.csv").open(newline="") as handle:
         series["MODSCAG"] = [
             (_date.fromisoformat(r["date"]), float(r["domain_fsca"]))
             for r in csv.DictReader(handle)
@@ -498,7 +618,7 @@ def _last_day_above(pairs, threshold: float):
 
 def _validation_figure(checkpoints: Path, results: Path) -> str | None:
     """Satellite fSCA against both models for the validation water year."""
-    reference_path = results / "wy2023_modscag_domain_fsca.csv"
+    reference_path = results / "water_year_2023_modscag_reference.csv"
     if not reference_path.exists():
         return None
     from datetime import date as _date

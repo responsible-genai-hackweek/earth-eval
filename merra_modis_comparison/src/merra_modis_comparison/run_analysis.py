@@ -35,8 +35,8 @@ from .snowvars import (
 )
 
 RESULTS = Path(__file__).resolve().parents[2] / "results"
-CELLS = RESULTS / "daily_cell_means"
-CHECKPOINTS = RESULTS / "daily_domain_means"
+CELLS = RESULTS / "water_year_1981_2026_cell_checkpoints"
+CHECKPOINTS = RESULTS / "water_year_1981_2026_daily_checkpoints"
 
 #: Last MERRA-2 granule published, verified against the archive. The collection
 #: lags real time by about four weeks.

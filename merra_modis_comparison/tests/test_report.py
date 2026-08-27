@@ -27,32 +27,32 @@ def built(tmp_path):
 class TestTable:
     def test_writes_one_row_per_model_year(self, built):
         _, res, years = built
-        with (res / "water_year_statistics.csv").open() as handle:
+        with (res / "water_year_1981_2026_annual_stats.csv").open() as handle:
             rows = list(csv.DictReader(handle))
         assert len(rows) == 2 * len(years)
 
     def test_both_models_are_present(self, built):
         _, res, _ = built
-        with (res / "water_year_statistics.csv").open() as handle:
+        with (res / "water_year_1981_2026_annual_stats.csv").open() as handle:
             models = {r["model"] for r in csv.DictReader(handle)}
         assert models == {"era5", "merra2"}
 
     def test_ranks_are_recorded(self, built):
         _, res, years = built
-        with (res / "water_year_statistics.csv").open() as handle:
+        with (res / "water_year_1981_2026_annual_stats.csv").open() as handle:
             rows = [r for r in csv.DictReader(handle) if r["model"] == "era5"]
         ranks = sorted(int(r["april_first_swe_rank"]) for r in rows)
         assert ranks == list(range(1, len(years) + 1))
 
     def test_the_planted_low_year_ranks_lowest(self, built):
         _, res, _ = built
-        with (res / "water_year_statistics.csv").open() as handle:
+        with (res / "water_year_1981_2026_annual_stats.csv").open() as handle:
             rows = {(r["model"], r["water_year"]): r for r in csv.DictReader(handle)}
         assert rows[("era5", "2026")]["april_first_swe_rank"] == "1"
 
     def test_the_planted_high_year_ranks_highest(self, built):
         summary, res, years = built
-        with (res / "water_year_statistics.csv").open() as handle:
+        with (res / "water_year_1981_2026_annual_stats.csv").open() as handle:
             rows = {(r["model"], r["water_year"]): r for r in csv.DictReader(handle)}
         assert rows[("era5", "2023")]["april_first_swe_rank"] == str(len(years))
 

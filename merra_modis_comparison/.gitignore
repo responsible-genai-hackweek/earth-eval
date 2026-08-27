@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .mypy_cache/
+
+# Rendered figures are build artefacts, not data. They regenerate from the
+# checkpoints with no network access, so tracking them only churns the history.
+results/*.png
+results/*.pdf
