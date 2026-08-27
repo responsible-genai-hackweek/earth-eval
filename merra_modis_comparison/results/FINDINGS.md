@@ -5,7 +5,7 @@ Generated from the daily checkpoints. Do not edit by hand.
 Domain: 72 native MERRA-2 cells over Colorado, 109-104W and 37-41N.
 
 - **ERA5**: WY1981-WY2026, 46 complete water years.
-- **MERRA-2**: WY2026-WY2026, 1 complete water years.
+- **MERRA-2**: WY2021-WY2026, 6 complete water years.
 
 ## ERA5
 
@@ -22,16 +22,26 @@ Ranks below are within WY1981-WY2026.
 
 ## MERRA-2
 
-Only WY2026-WY2026 available so far; values are reported without ranks.
+Only WY2021-WY2026 available so far; values are reported without ranks.
 
 - **1 April SWE** — omitted deliberately. MERRA-2 melts this domain out almost entirely by April in most years, so the ranking within that band is noise rather than a result.
-- **1 April snow depth, WY2026**: 0.00495 m — not ranked; only 1 water year available, too few to place it in a distribution.
-- **peak SWE, WY2026**: 13.83 mm w.e. — not ranked; only 1 water year available, too few to place it in a distribution.
-- **season-mean SWE, WY2026**: 1.665 mm w.e. — not ranked; only 1 water year available, too few to place it in a distribution.
+- **1 April snow depth, WY2023**: 0.1501 m — not ranked; only 6 water years available, too few to place it in a distribution.
+- **1 April snow depth, WY2026**: 0.00495 m — not ranked; only 6 water years available, too few to place it in a distribution.
+- **peak SWE, WY2023**: 54.04 mm w.e. — not ranked; only 6 water years available, too few to place it in a distribution.
+- **peak SWE, WY2026**: 13.83 mm w.e. — not ranked; only 6 water years available, too few to place it in a distribution.
+- **season-mean SWE, WY2023**: 19.2 mm w.e. — not ranked; only 6 water years available, too few to place it in a distribution.
+- **season-mean SWE, WY2026**: 1.665 mm w.e. — not ranked; only 6 water years available, too few to place it in a distribution.
 
 ## Satellite validation, WY2023
 
 347 of 365 days carry a usable MODSCAG reference; 18 have none in the archive and 0 failed to fetch.
 
 - **ERA5 minus MODSCAG** snow-cover fraction, 347 paired days: mean bias +0.161, MAE 0.162. ERA5 publishes no snow-cover fraction, so this is diagnosed from the IFS scheme, which saturates at 0.10 m of depth; a high bias is a property of that diagnostic as much as of the model.
+- **MERRA-2 minus MODSCAG** snow-cover fraction, 347 paired days: mean bias -0.088, MAE 0.089.
+
+Melt-out, the last day snow cover stays above 0.10:
+
+- **MODSCAG**: 2023-05-20
+- **ERA5**: 2023-06-04
+- **MERRA-2**: 2023-04-26
 

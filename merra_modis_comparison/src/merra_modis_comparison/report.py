@@ -353,8 +353,45 @@ def _validation_findings(checkpoints: Path, results: Path) -> list[str]:
             f"- **{label} minus MODSCAG** snow-cover fraction, {len(pairs)} paired "
             f"days: mean bias {bias:+.3f}, MAE {mae:.3f}.{note}"
         )
+
+    out += ["", "Melt-out, the last day snow cover stays above 0.10:", ""]
+    for label, days_values in _melt_out_inputs(checkpoints, results).items():
+        day = _last_day_above(days_values, 0.10)
+        out.append(f"- **{label}**: {day.isoformat() if day else 'never reached'}")
     out.append("")
     return out
+
+
+def _melt_out_inputs(checkpoints: Path, results: Path) -> dict:
+    """Daily snow-cover series for the reference and each model, WY2023."""
+    from datetime import date as _date
+
+    series: dict[str, list[tuple]] = {}
+    with (results / "wy2023_modscag_domain_fsca.csv").open(newline="") as handle:
+        series["MODSCAG"] = [
+            (_date.fromisoformat(r["date"]), float(r["domain_fsca"]))
+            for r in csv.DictReader(handle)
+            if r.get("status") == "ok" and r["domain_fsca"]
+        ]
+    for model, column, label in (("era5", "fsca", "ERA5"), ("merra2", "frsno", "MERRA-2")):
+        path = checkpoints / f"{model}_WY2023.csv"
+        if not path.exists():
+            continue
+        with path.open(newline="") as handle:
+            series[label] = [
+                (_date.fromisoformat(r["date"]), float(r[column]))
+                for r in csv.DictReader(handle)
+                if r.get(column)
+            ]
+    return series
+
+
+def _last_day_above(pairs, threshold: float):
+    """Last date whose value exceeds ``threshold``, scanning from the end."""
+    for day, value in sorted(pairs, reverse=True):
+        if np.isfinite(value) and value > threshold:
+            return day
+    return None
 
 
 def _validation_figure(checkpoints: Path, results: Path) -> str | None:
