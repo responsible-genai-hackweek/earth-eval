@@ -34,6 +34,8 @@ regridding, coverage gate) that was built independently against the same spec.
 
 - `merra_modis_comparison/CLAUDE.md` — working guidance, invariants, claims discipline
 - `merra_modis_comparison/plan/SNOWPACK_REANALYSIS_PLAN.md` — the current spec
+- `merra_modis_comparison/plan/SEASON_SHAPE_PLAN.md` — SNOTEL season-shape
+  methodology. Timing only, never magnitude; the elevation correction is load-bearing
 - `merra_modis_comparison/plan/FSCA_*.md`, `MULTIYEAR_*.md` — archived specs of the
   superseded experiment, left unedited as its record
 - `merra_modis_comparison/research/` — product research notes

@@ -95,10 +95,38 @@ the same deficit over mountainous terrain would bias the cell mean materially,
 and a denominator derived from the configured tiles would report 100% support
 either way.
 
+## Season shape against SNOTEL
+
+The two reanalyses disagree about magnitude by a factor this project reports and
+declines to adjudicate. They also disagree about *when the season happens*, and
+that an observation can settle: MERRA-2 peaks in mid-February, ERA5 in early
+April.
+
+All 120 Colorado SNOTEL stations, water years 1981–2026, say early April. Against
+the observed timing corrected to the comparison band's elevation, ERA5 lands
+within 3 days at the peak and MERRA-2 48 days early; at melt-out, +10 days and
+−57 days. Since a pure precipitation deficit would scale a snowpack curve without
+moving it, MERRA-2's deficit cannot be a precipitation deficit alone.
+
+**SNOTEL is used for timing only, never magnitude.** Every Colorado station sits
+above this domain's median cell elevation — the network samples the high country
+inside the domain, not the domain — so a raw network statistic beside a raw
+domain statistic measures siting, not model error. Even the timing comparison
+carries an elevation correction, fitted on the network's own gradient, and that
+correction moves the observation *toward* MERRA-2 rather than toward ERA5.
+
+Methodology and the numbers are in
+[`plan/SEASON_SHAPE_PLAN.md`](plan/SEASON_SHAPE_PLAN.md); product research and
+the API traps are in
+[`research/SNOTEL_PRODUCT_NOTES.md`](research/SNOTEL_PRODUCT_NOTES.md). The
+measurement has been performed but the code is not yet in the package, which the
+plan states in its implementation-status section.
+
 ## Layout
 
 ```
 plan/SNOWPACK_REANALYSIS_PLAN.md   the specification for this analysis
+plan/SEASON_SHAPE_PLAN.md          SNOTEL season-shape methodology
 plan/FSCA_PIPELINE_PLAN.md         archived spec of a superseded experiment
 research/                          product research notes
 src/merra_modis_comparison/        the package
