@@ -168,14 +168,6 @@ def anomaly_bars(
 
     ax.bar(water_years, values, color=colours, width=0.74, zorder=3)
     ax.axhline(mean, color=INK, linewidth=1.6, zorder=4)
-    label = ax.annotate(
-        "Mean", xy=(max(water_years), mean), xytext=(0, 5),
-        textcoords="offset points", ha="right", color=INK,
-        fontsize=10.5, zorder=7,
-    )
-    label.set_path_effects(
-        [path_effects.withStroke(linewidth=3.0, foreground=SURFACE)]
-    )
 
     # Headroom for the three-line callouts, which otherwise run off the top.
     finite = values[np.isfinite(values)]
@@ -494,7 +486,7 @@ def validation_series(
     ax.set_ylabel("Fractional Snow Cover", color=INK)
     _titles(ax, title)
     legend = ax.legend(
-        loc="upper right", ncol=2, borderpad=0.7,
+        loc="upper right", ncol=1, borderpad=0.7,
         frameon=True, facecolor=SURFACE, edgecolor=GRID, framealpha=1.0,
     )
     legend.get_frame().set_linewidth(0.9)
