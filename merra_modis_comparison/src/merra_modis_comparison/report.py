@@ -166,7 +166,7 @@ def build_report(
             summary[f"outliers_{name}"] = {"low": low, "high": high}
             summary["figures"].append(str(spaghetti(
                 data, era5_years, low=low, high=high,
-                title=f"Colorado Rocky Mountains: {label} by Water Year, ERA5 "
+                title=f"Colorado Rocky Mountains: {label}, ERA5 "
                       f"({min(era5_years)}\u2013{max(era5_years)})",
                 unit=unit,
                 path=results / name,
