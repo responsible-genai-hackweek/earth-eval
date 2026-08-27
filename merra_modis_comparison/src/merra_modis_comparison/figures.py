@@ -26,8 +26,8 @@ import numpy as np
 from .snowseason import DailySeries, rank_ascending, water_year_slice
 
 __all__ = [
-    "anomaly_bars", "save", "trajectory", "model_agreement_scatter",
-    "validation_series",
+    "anomaly_bars", "save", "spaghetti", "trajectory",
+    "model_agreement_scatter", "validation_series",
 ]
 
 # Validated categorical pair, in fixed order.
@@ -291,6 +291,97 @@ def model_agreement_scatter(
         xy=(0.03, 0.03), xycoords="axes fraction",
         fontsize=9, color=INK_SECONDARY,
     )
+    return save(fig, path)
+
+
+def spaghetti(
+    series: DailySeries,
+    water_years: list[int],
+    *,
+    highlight: dict[int, str],
+    context: tuple[int, ...] = (),
+    title: str,
+    subtitle: str,
+    unit: str,
+    path: Path,
+) -> Path:
+    """Every water year as one thin line, with chosen years brought forward.
+
+    The background years are a single *population*, not many series, so they
+    share one neutral hue. Giving them separate colours would be a cycled-hue
+    rainbow, and the highlighted years would then compete with noise rather than
+    stand out. Overlap does the work a percentile band would otherwise do:
+    where many years coincide the ink darkens, and unlike a band - which is
+    computed per day-of-year and traces a path no real year followed - every
+    curve here is a trajectory that actually happened.
+
+    ``context`` years are drawn in a lighter tint of the dry pole: near misses,
+    shown so a highlighted low year is not mistaken for a lone outlier.
+    """
+    fig, ax = plt.subplots(figsize=(11, 5))
+    _style(ax)
+
+    def curve(wy: int):
+        year = water_year_slice(series, wy)
+        if len(year) == 0:
+            return None, None
+        return np.array([_water_day(d, wy) for d in year.dates]), year.values
+
+    plotted = 0
+    for wy in water_years:
+        if wy in highlight or wy in context:
+            continue
+        x, y = curve(wy)
+        if x is None:
+            continue
+        ax.plot(x, y, color=INK_MUTED, linewidth=0.7, alpha=0.30, zorder=2,
+                solid_capstyle="round")
+        plotted += 1
+    if plotted:
+        ax.plot([], [], color=INK_MUTED, linewidth=0.7, alpha=0.55,
+                label=f"{plotted} other water years")
+
+    # The near misses are one class, not several identities: they share a tint,
+    # so they share a single legend entry naming them all. Two series wearing
+    # one colour with separate legend rows would rest identity on colour alone.
+    tint = _blend(SURFACE, DRY_COLOUR, 0.45)
+    drawn: list[int] = []
+    for wy in context:
+        x, y = curve(wy)
+        if x is None:
+            continue
+        ax.plot(x, y, color=tint, linewidth=1.3, zorder=4)
+        drawn.append(wy)
+    if drawn:
+        ax.plot([], [], color=tint, linewidth=1.3,
+                label="next lowest: " + ", ".join(f"WY{wy}" for wy in sorted(drawn)))
+
+    for wy, colour in highlight.items():
+        x, y = curve(wy)
+        if x is None:
+            continue
+        ax.plot(x, y, color=colour, linewidth=2.4, zorder=6, label=f"WY{wy}",
+                solid_capstyle="round")
+        # Direct label at the peak, so identity never rests on colour alone.
+        top = int(np.nanargmax(y))
+        ax.annotate(
+            f"WY{wy}", xy=(x[top], y[top]), xytext=(6, 6),
+            textcoords="offset points", fontsize=10, color=colour,
+            fontweight="bold", zorder=7,
+            path_effects=[path_effects.withStroke(linewidth=3.0, foreground=SURFACE)],
+        )
+
+    ticks = [0, 31, 61, 92, 123, 151, 182, 212, 243, 273]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May",
+                        "Jun", "Jul"])
+    ax.set_xlim(0, 290)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel(unit, color=INK_SECONDARY, fontsize=9.5)
+    _titles(ax, title, subtitle)
+    legend = ax.legend(frameon=False, fontsize=9, loc="upper left", ncol=2)
+    for text in legend.get_texts():
+        text.set_color(INK_SECONDARY)
     return save(fig, path)
 
 

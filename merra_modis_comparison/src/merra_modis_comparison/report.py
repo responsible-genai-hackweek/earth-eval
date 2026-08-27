@@ -13,11 +13,14 @@ from pathlib import Path
 import numpy as np
 
 from .figures import (
+    DRY_COLOUR,
+    WET_COLOUR,
     anomaly_bars,
     model_agreement_scatter,
-    trajectory,
+    spaghetti,
     validation_series,
 )
+from .snowseason import rank_ascending
 from .summarize import (
     load_depth_series,
     load_swe_series,
@@ -132,12 +135,35 @@ def build_report(
             path=results / "april_first_depth_by_water_year.png",
         )))
 
-        summary["figures"].append(str(trajectory(
-            swe, era5_years, feature_years,
-            title="Colorado snowpack through the water year, ERA5",
-            subtitle=f"Daily domain-mean SWE against the {span} spread.",
+        # Every year as its own line, rather than a percentile band. A band is
+        # computed per day-of-year and traces a path no real year followed; each
+        # curve here actually happened, and the shape of a year is part of the
+        # result.
+        peaks = np.array([s.peak_swe_mm for s in stats["era5"]])
+        lowest = [era5_years[i] for i in np.argsort(rank_ascending(peaks))[:3]]
+        near_misses = tuple(wy for wy in lowest if wy not in feature_years)
+        summary["near_miss_years"] = near_misses
+        summary["figures"].append(str(spaghetti(
+            swe, era5_years,
+            highlight={feature_years[0]: WET_COLOUR, feature_years[-1]: DRY_COLOUR},
+            context=near_misses,
+            title=f"Every Colorado water year since {min(era5_years)}, ERA5",
+            subtitle="Daily domain-mean snow water equivalent. Each thin line is "
+                     "one water year; overlap shows where years agree.",
             unit="mm w.e.",
-            path=results / "daily_swe_trajectory.png",
+            path=results / "spaghetti_swe.png",
+        )))
+
+        summary["figures"].append(str(spaghetti(
+            depth, era5_years,
+            highlight={feature_years[0]: WET_COLOUR, feature_years[-1]: DRY_COLOUR},
+            context=near_misses,
+            title=f"The same years, as snow depth",
+            subtitle="Grid-cell mean geometric depth. The low year separates further "
+                     "here than in water equivalent, because its snow was also "
+                     "less dense.",
+            unit="m",
+            path=results / "spaghetti_depth.png",
         )))
 
     shared = sorted(
