@@ -98,8 +98,8 @@ def _titles(ax, title: str, offset: float = 0.0) -> None:
     caption, where they can be edited without re-rendering. ``offset`` lifts it
     clear of a panel label in a multi-panel figure.
     """
-    ax.text(0.0, 1.08 + offset, title, transform=ax.transAxes, color=INK,
-            fontsize=15, fontweight="bold", va="top", ha="left")
+    ax.text(0.5, 1.08 + offset, title, transform=ax.transAxes, color=INK,
+            fontsize=15, fontweight="bold", va="top", ha="center")
 
 
 def save(fig, path: Path) -> Path:
