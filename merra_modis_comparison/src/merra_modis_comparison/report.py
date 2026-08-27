@@ -177,7 +177,10 @@ def build_report(
                  _converted(load_band_series(
                      checkpoints, "era5", era5_years, field_prefix, key), convert),
                  low, high)
-                for key, band_label, _, _ in BANDS
+                # Reversed for display: elevation increases upward on the page,
+                # so the high band is the top panel. The stored column order is
+                # untouched - this is a presentation choice, not a data one.
+                for key, band_label, _, _ in reversed(BANDS)
             ]
             summary["figures"].append(str(spaghetti_bands(
                 bands, era5_years,
