@@ -5,6 +5,10 @@ description: Use when building or running a long multi-year Earth-science data c
 
 # Streaming Earthdata Campaigns with Sufficient-Statistic Checkpoints
 
+**Companion:** `resumable-fetch-run-integrity` covers how the run behaves -
+scheduling so a partial run still answers the question, which failures are worth
+retrying, and never letting a missing datum and a failed fetch look alike.
+
 **REQUIRED BACKGROUND:** read the `snow-hydrology-fsca-evaluation` skill and its
 scientific contract before changing anything that affects what is compared.
 This skill is about getting 5,113 days of data through the machine without
