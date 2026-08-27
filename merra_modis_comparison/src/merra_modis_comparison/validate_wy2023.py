@@ -38,7 +38,13 @@ __all__ = ["build_wy2023_reference"]
 
 TILES = ("h09v04", "h09v05", "h10v04")
 SUPPORT_THRESHOLD = 0.8
-COLUMNS = ("date", "domain_fsca", "cells_supported", "mean_support", "deficient_cells")
+#: ``status`` distinguishes a day with no usable reference from a day whose
+#: fetch failed. Both leave ``domain_fsca`` empty, and conflating them would
+#: silently shorten the record.
+COLUMNS = (
+    "date", "domain_fsca", "cells_supported", "mean_support",
+    "status", "deficient_cells",
+)
 
 
 def _windows(grid):
@@ -100,21 +106,26 @@ def build_wy2023_reference(results: Path, workers: int = 6) -> Path:
             session = open_session()
             local.session = session
         try:
-            return day, reference_day(day, grid, windows, expected, weights, session)
+            domain, supported, mean_support = reference_day(
+                day, grid, windows, expected, weights, session
+            )
+            status = "ok" if supported else "no_reference"
+            return day, (domain, supported, mean_support, status)
         except Exception as exc:
             # Recorded, not swallowed: a day that silently became NaN would
             # shorten the record without anyone noticing.
             failures.append(f"{day.isoformat()}: {type(exc).__name__}: {exc}")
-            return day, (float("nan"), 0, float("nan"))
+            return day, (float("nan"), 0, float("nan"), "fetch_failed")
 
     rows = []
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
-        for day, (domain, supported, mean_support) in pool.map(one, days):
+        for day, (domain, supported, mean_support, status) in pool.map(one, days):
             rows.append([
                 day.isoformat(),
                 "" if not np.isfinite(domain) else f"{domain:.6f}",
                 supported,
                 "" if not np.isfinite(mean_support) else f"{mean_support:.4f}",
+                status,
                 deficient,
             ])
 

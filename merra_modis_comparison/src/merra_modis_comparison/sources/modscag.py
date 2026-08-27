@@ -187,19 +187,31 @@ class RangeReader(io.RawIOBase):
 
 
 def read_snow_fraction(
-    tile: str, day: date, session, rows: slice, cols: slice
+    tile: str, day: date, session, rows: slice, cols: slice, attempts: int = 4
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return ``(fraction, valid)`` for a tile-day crop, fraction in 0..1.
 
     Fill is an elevation and land screen, not an observation of bare ground, so
     it is returned as an explicit validity mask rather than folded into zeros.
+
+    Retries transient transport failures. The archive drops connections
+    sporadically under load - a dropped connection is not a missing granule, and
+    conflating the two silently shortens the record.
     """
+    import time
+
     import h5py
 
-    reader = RangeReader(granule_url(tile, day), session)
-    with h5py.File(reader, "r") as handle:
-        raw = handle["snow_fraction"][0, rows, cols]
-    raw = np.asarray(raw)
-    valid = raw <= MODSCAG_SCALE
-    fraction = np.where(valid, raw / MODSCAG_SCALE, np.nan)
-    return fraction, valid
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            reader = RangeReader(granule_url(tile, day), session)
+            with h5py.File(reader, "r") as handle:
+                raw = np.asarray(handle["snow_fraction"][0, rows, cols])
+            valid = raw <= MODSCAG_SCALE
+            return np.where(valid, raw / MODSCAG_SCALE, np.nan), valid
+        except Exception as exc:  # transport, not science
+            last = exc
+            if attempt < attempts - 1:
+                time.sleep(2**attempt)
+    raise RuntimeError(f"{tile} {day.isoformat()} failed after {attempts} attempts: {last}")
