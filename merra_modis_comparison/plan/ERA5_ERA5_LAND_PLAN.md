@@ -82,3 +82,8 @@ Status: **completed 2026-08-26**
   hillshade and labeled 2,000/3,000 m contours. Normalized cells are masked
   where paired monthly MODSCAG fSCA is below 5%.
 - Output: `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`.
+- The companion elevation artifact merges the same seven monthly sufficient-
+  statistic checkpoints, then plots period-aggregate NMB, NMAE, and paired
+  MODSCAG fSCA against USGS 3DEP cell-mean elevation. NMB/NMAE use the same 5%
+  paired-MODSCAG mask and no daily or raw model field is reprocessed or saved.
+- Output: `results/era5_land_wy2023_nov_may_elevation_dependency.png`.

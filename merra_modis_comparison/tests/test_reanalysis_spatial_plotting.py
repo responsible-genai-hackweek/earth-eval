@@ -14,7 +14,9 @@ from merra_modis_comparison.reanalysis_spatial_plotting import (
     MIN_MODIS_FSCA_PCT,
     load_reanalysis_elevation_grid,
     reanalysis_cell_metric_grid,
+    reanalysis_modis_fsca_grid,
     reanalysis_normalized_metric_grid,
+    write_reanalysis_elevation_dependency_plot,
     write_reanalysis_spatial_monthly_plot,
 )
 
@@ -85,6 +87,22 @@ def test_normalized_metrics_use_paired_modscag_denominator_and_five_pct_mask():
     assert np.isnan(masked).all()
 
 
+def test_reanalysis_modis_fsca_grid_uses_paired_pixel_day_weights():
+    config = ReanalysisRunConfig(
+        start_water_year=2023,
+        end_water_year=2023,
+        model_ids=("era5-land",),
+        west=-109,
+        east=-108.8,
+        south=37,
+        north=37.2,
+    )
+    grid = config.target_grid("era5-land")
+    values = reanalysis_modis_fsca_grid(_stats(config, -0.1), grid.shape)
+    assert values.shape == grid.shape
+    assert np.allclose(values, 50)
+
+
 def test_era5_land_fourteen_panel_spatial_plot(tmp_path):
     config = ReanalysisRunConfig(
         start_water_year=2023,
@@ -112,4 +130,15 @@ def test_era5_land_fourteen_panel_spatial_plot(tmp_path):
         months, config, MODEL_SPECS["era5-land"], output, elevation
     )
     assert output.stat().st_size > 10_000
+    assert not list(tmp_path.glob("*.tmp"))
+
+    elevation_output = tmp_path / "era5-land-elevation.png"
+    write_reanalysis_elevation_dependency_plot(
+        months,
+        config,
+        MODEL_SPECS["era5-land"],
+        elevation_output,
+        elevation,
+    )
+    assert elevation_output.stat().st_size > 10_000
     assert not list(tmp_path.glob("*.tmp"))

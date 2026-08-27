@@ -14,7 +14,11 @@ import numpy as np
 from .grids import RegularLatLonGrid
 from .reanalysis_checkpoints import checkpoint_path, load_month_checkpoint
 from .reanalysis_config import MODEL_SPECS, ReanalysisModelSpec, ReanalysisRunConfig
-from .reanalysis_metrics import ReanalysisStatsBlock, reanalysis_metrics_for_slot
+from .reanalysis_metrics import (
+    ReanalysisStatsBlock,
+    merge_reanalysis_blocks,
+    reanalysis_metrics_for_slot,
+)
 from .spatial_plotting import (
     ANALYSIS_MONTHS,
     ELEVATION_CONTOURS_M,
@@ -22,6 +26,7 @@ from .spatial_plotting import (
     ElevationGrid,
     _save_figure,
     _terrain_extent,
+    cell_mean_elevation_grid,
     hillshade_grid,
     load_elevation_grid,
 )
@@ -127,6 +132,136 @@ def reanalysis_normalized_metric_grid(
         where=usable,
     )
     return values.reshape(shape)
+
+
+def reanalysis_modis_fsca_grid(
+    stats: ReanalysisStatsBlock,
+    shape: tuple[int, int],
+) -> np.ndarray:
+    """Return paired, pixel-day-weighted MODSCAG fSCA as percent by cell."""
+
+    if stats.n_cells != shape[0] * shape[1]:
+        raise ValueError("statistics cell count differs from the plotting grid")
+    weights = stats.sum_w[: stats.n_cells]
+    reference_sum = stats.sum_w_reference[: stats.n_cells]
+    values = np.divide(
+        100.0 * reference_sum,
+        weights,
+        out=np.full(weights.shape, np.nan, dtype=np.float64),
+        where=weights > 0,
+    )
+    return values.reshape(shape)
+
+
+def _dependency_statistics(
+    elevation_km: np.ndarray, values: np.ndarray
+) -> tuple[float, float, float]:
+    slope, intercept = np.polyfit(elevation_km, values, 1)
+    correlation = (
+        float("nan")
+        if np.isclose(np.std(elevation_km), 0) or np.isclose(np.std(values), 0)
+        else float(np.corrcoef(elevation_km, values)[0, 1])
+    )
+    return float(slope), float(intercept), correlation
+
+
+def write_reanalysis_elevation_dependency_plot(
+    monthly_stats: list[tuple[str, ReanalysisStatsBlock]],
+    config: ReanalysisRunConfig,
+    spec: ReanalysisModelSpec,
+    output: Path,
+    elevation: ElevationGrid,
+) -> None:
+    """Plot aggregate normalized errors and MODSCAG fSCA against elevation."""
+
+    if len(monthly_stats) != 7:
+        raise ValueError("the elevation-dependence figure requires seven months")
+    grid = config.target_grid(spec.model_id)
+    period_stats = merge_reanalysis_blocks([stats for _, stats in monthly_stats])
+    elevations_km = (
+        cell_mean_elevation_grid(
+            elevation, _ElevationConfig(grid)  # type: ignore[arg-type]
+        ).ravel()
+        / 1000.0
+    )
+    metrics = (
+        (
+            "Normalized mean bias",
+            reanalysis_normalized_metric_grid(
+                period_stats, "nmb_pct", grid.shape
+            ).ravel(),
+            "Normalized mean bias (%)",
+            "#2166ac",
+        ),
+        (
+            "Normalized MAE",
+            reanalysis_normalized_metric_grid(
+                period_stats, "nmae_pct", grid.shape
+            ).ravel(),
+            "Normalized mean absolute error (%)",
+            "#b2182b",
+        ),
+        (
+            "Mean MODSCAG fSCA",
+            reanalysis_modis_fsca_grid(period_stats, grid.shape).ravel(),
+            "MODIS fractional snow-covered area (%)",
+            "#238b45",
+        ),
+    )
+
+    figure, axes = plt.subplots(
+        1, 3, figsize=(14.2, 4.8), sharex=True, constrained_layout=True
+    )
+    for axis, (label, metric_values, y_label, color) in zip(
+        axes, metrics, strict=True
+    ):
+        valid = np.isfinite(elevations_km) & np.isfinite(metric_values)
+        x = elevations_km[valid]
+        y = metric_values[valid]
+        if x.size < 3:
+            raise ValueError(
+                f"too few valid {spec.display_name} cells for elevation analysis"
+            )
+        slope, intercept, correlation = _dependency_statistics(x, y)
+        correlation_label = (
+            "undefined" if not np.isfinite(correlation) else f"{correlation:+.2f}"
+        )
+        trend_x = np.linspace(float(x.min()), float(x.max()), 200)
+        axis.scatter(
+            x,
+            y,
+            s=13,
+            color=color,
+            alpha=0.34,
+            edgecolors="none",
+            rasterized=True,
+        )
+        axis.plot(
+            trend_x,
+            slope * trend_x + intercept,
+            color="#252a30",
+            linewidth=1.8,
+        )
+        if label == "Normalized mean bias":
+            axis.axhline(0, color="#59636f", linewidth=0.8, alpha=0.7)
+        axis.set_title(
+            f"{label}\nSlope {slope:+.1f} pp km⁻¹; "
+            f"Pearson r = {correlation_label}; n = {x.size:,}",
+            fontsize=10.5,
+        )
+        axis.set_xlabel(f"{spec.display_name} cell mean elevation (km)")
+        axis.set_ylabel(y_label)
+        axis.grid(color="#c7ccd1", linewidth=0.5, alpha=0.55)
+
+    figure.suptitle(
+        f"Elevation dependence of {spec.display_name} normalized snow-cover error\n"
+        "Colorado, November 2022–May 2023 aggregate; USGS 3DEP cell-mean "
+        "elevation\n"
+        "Normalized metrics exclude paired MODSCAG fSCA < 5%; black line is "
+        "the OLS trend",
+        fontsize=12.5,
+    )
+    _save_figure(figure, output)
 
 
 def write_reanalysis_spatial_monthly_plot(
@@ -303,6 +438,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("results/era5_land_wy2023_nov_may_spatial_bias_mae.png"),
     )
     parser.add_argument(
+        "--elevation-output",
+        type=Path,
+        default=Path(
+            "results/era5_land_wy2023_nov_may_elevation_dependency.png"
+        ),
+    )
+    parser.add_argument(
         "--dem",
         type=Path,
         default=Path("data/usgs_3dep_era5_land_coarse_dem.tif"),
@@ -327,7 +469,11 @@ def main(argv: list[str] | None = None) -> None:
     write_reanalysis_spatial_monthly_plot(
         monthly_stats, config, spec, args.output, elevation
     )
+    write_reanalysis_elevation_dependency_plot(
+        monthly_stats, config, spec, args.elevation_output, elevation
+    )
     print(f"wrote {args.output}")
+    print(f"wrote {args.elevation_output}")
 
 
 if __name__ == "__main__":
