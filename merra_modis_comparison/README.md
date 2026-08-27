@@ -267,8 +267,8 @@ affected cells are left unpaired rather than filled or extrapolated.
 ### ERA5-Land WY2023 spatial and elevation-dependent normalized errors
 
 After the ERA5-Land-only WY2023 trial completes, reproduce its November–May
-14-panel normalized spatial figure and its elevation-dependence scatterplots
-with:
+14-panel normalized spatial figure and April–May elevation-dependence
+scatterplots with:
 
 ```bash
 ./plot_era5_land_wy2023_spatial.zsh
@@ -279,12 +279,12 @@ cells where paired monthly MODSCAG fSCA is below 5%. It uses the same subtle
 USGS 3DEP hillshade and labeled 2,000/3,000 m contours as the MERRA-2 figure and
 contains the 2,091 ERA5-Land 0.1° cells. If its slightly wider DEM is absent, run
 `./download_era5_land_coarse_dem.zsh` first. The elevation figure aggregates
-November–May sufficient statistics and plots NMB, NMAE, and paired MODSCAG fSCA
-against 0.1° cell-mean elevation, with OLS slopes and Pearson correlations.
+April–May 2023 sufficient statistics and plots NMB, NMAE, and paired MODSCAG
+fSCA against 0.1° cell-mean elevation, with OLS slopes and Pearson correlations.
 Normalized metrics use the same 5% paired-MODSCAG mask. The launcher writes:
 
 - `results/era5_land_wy2023_nov_may_spatial_bias_mae.png`
-- `results/era5_land_wy2023_nov_may_elevation_dependency.png`
+- `results/era5_land_wy2023_apr_may_elevation_dependency.png`
 
 The ERA runner is adapter-based. A new regular latitude/longitude CDS product
 starts with a reviewed `ReanalysisModelSpec` in
@@ -373,7 +373,7 @@ of freedom for each cell.
 | `results/era5_land_modis_water_year_2010_2023_monthly_checkpoints/` | ERA5-Land resumable monthly sufficient-statistic CSVs |
 | `results/era5_land_modis_water_year_2010_2023_{overall,pixel}_stats.csv` | ERA5-Land monthly/seasonal domain and 0.1° cell statistics |
 | `results/era5_land_wy2023_nov_may_spatial_bias_mae.png` | ERA5-Land WY2023 November–May NMB and NMAE maps; paired MODSCAG fSCA ≥ 5% |
-| `results/era5_land_wy2023_nov_may_elevation_dependency.png` | ERA5-Land WY2023 November–May NMB, NMAE, and paired MODSCAG fSCA versus cell-mean elevation |
+| `results/era5_land_wy2023_apr_may_elevation_dependency.png` | ERA5-Land April–May 2023 NMB, NMAE, and paired MODSCAG fSCA versus cell-mean elevation |
 
 Daily MODSCAG granules and model subsets are never cached. The ERA monthly
 checkpoints also retain weighted MODSCAG and error sums, allowing bias, MAE,

@@ -117,7 +117,15 @@ def test_era5_land_fourteen_panel_spatial_plot(tmp_path):
     months = [
         (label, _stats(config, error))
         for label, error in zip(
-            ("Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"),
+            (
+                "November 2022",
+                "December 2022",
+                "January 2023",
+                "February 2023",
+                "March 2023",
+                "April 2023",
+                "May 2023",
+            ),
             (-0.12, -0.10, -0.08, -0.06, -0.04, -0.02, 0.01),
             strict=True,
         )
@@ -132,9 +140,9 @@ def test_era5_land_fourteen_panel_spatial_plot(tmp_path):
     assert output.stat().st_size > 10_000
     assert not list(tmp_path.glob("*.tmp"))
 
-    elevation_output = tmp_path / "era5-land-elevation.png"
+    elevation_output = tmp_path / "era5-land-apr-may-elevation.png"
     write_reanalysis_elevation_dependency_plot(
-        months,
+        months[-2:],
         config,
         MODEL_SPECS["era5-land"],
         elevation_output,

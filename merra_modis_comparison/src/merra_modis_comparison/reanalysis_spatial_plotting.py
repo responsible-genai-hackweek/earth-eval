@@ -35,6 +35,7 @@ from .spatial_plotting import (
 MIN_MODIS_FSCA_PCT = 5.0
 NORMALIZED_BIAS_LIMIT_PCT = 120.0
 NORMALIZED_MAE_LIMIT_PCT = 140.0
+ELEVATION_ANALYSIS_MONTHS = ("April 2023", "May 2023")
 
 
 @dataclass(frozen=True)
@@ -174,8 +175,11 @@ def write_reanalysis_elevation_dependency_plot(
 ) -> None:
     """Plot aggregate normalized errors and MODSCAG fSCA against elevation."""
 
-    if len(monthly_stats) != 7:
-        raise ValueError("the elevation-dependence figure requires seven months")
+    labels = tuple(label for label, _ in monthly_stats)
+    if labels != ELEVATION_ANALYSIS_MONTHS:
+        raise ValueError(
+            "the elevation-dependence figure requires April and May in order"
+        )
     grid = config.target_grid(spec.model_id)
     period_stats = merge_reanalysis_blocks([stats for _, stats in monthly_stats])
     elevations_km = (
@@ -255,7 +259,7 @@ def write_reanalysis_elevation_dependency_plot(
 
     figure.suptitle(
         f"Elevation dependence of {spec.display_name} normalized snow-cover error\n"
-        "Colorado, November 2022–May 2023 aggregate; USGS 3DEP cell-mean "
+        "Colorado, April–May 2023 aggregate; USGS 3DEP cell-mean "
         "elevation\n"
         "Normalized metrics exclude paired MODSCAG fSCA < 5%; black line is "
         "the OLS trend",
@@ -441,7 +445,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--elevation-output",
         type=Path,
         default=Path(
-            "results/era5_land_wy2023_nov_may_elevation_dependency.png"
+            "results/era5_land_wy2023_apr_may_elevation_dependency.png"
         ),
     )
     parser.add_argument(
@@ -469,8 +473,13 @@ def main(argv: list[str] | None = None) -> None:
     write_reanalysis_spatial_monthly_plot(
         monthly_stats, config, spec, args.output, elevation
     )
+    elevation_months = [
+        (label, stats)
+        for label, stats in monthly_stats
+        if label in ELEVATION_ANALYSIS_MONTHS
+    ]
     write_reanalysis_elevation_dependency_plot(
-        monthly_stats, config, spec, args.elevation_output, elevation
+        elevation_months, config, spec, args.elevation_output, elevation
     )
     print(f"wrote {args.output}")
     print(f"wrote {args.elevation_output}")
