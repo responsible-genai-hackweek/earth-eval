@@ -19,6 +19,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -65,7 +66,7 @@ def _titles(ax, title: str, subtitle: str) -> None:
     import textwrap
 
     width_in = ax.get_figure().get_size_inches()[0]
-    wrapped = "\n".join(textwrap.wrap(subtitle, width=max(40, int(width_in * 12))))
+    wrapped = "\n".join(textwrap.wrap(subtitle, width=max(40, int(width_in * 10.5))))
     lines = wrapped.count("\n") + 1
     ax.text(0.0, 1.10 + 0.055 * lines, title, transform=ax.transAxes, color=INK,
             fontsize=13, fontweight="bold", va="top", ha="left")
@@ -118,7 +119,7 @@ def anomaly_bars(
 
     ax.bar(water_years, values, color=colours, width=0.74, zorder=3)
     ax.axhline(mean, color=INK_MUTED, linewidth=1.2, linestyle=(0, (4, 3)), zorder=4)
-    ax.annotate(
+    label = ax.annotate(
         f"{len(water_years)}-year mean  {mean:.3g} {unit}",
         xy=(max(water_years), mean),
         xytext=(0, 6),
@@ -126,7 +127,17 @@ def anomaly_bars(
         ha="right",
         color=INK_SECONDARY,
         fontsize=8.5,
+        zorder=7,
     )
+    # A halo, so the label stays legible where it crosses a bar.
+    label.set_path_effects(
+        [path_effects.withStroke(linewidth=3.0, foreground=SURFACE)]
+    )
+
+    # Headroom for the three-line callouts, which otherwise run off the top.
+    finite = values[np.isfinite(values)]
+    if finite.size:
+        ax.set_ylim(0, float(finite.max()) * 1.30)
 
     for wy in highlight:
         if wy not in water_years:
