@@ -51,9 +51,36 @@
 \end{tikzpicture}
 \end{center}
 \vspace{0.35em}
+% TITLES ARE A MATCHED PAIR and each has to stand on its own. They read
+% "Fixed Before Any Code" / "Fixed Before Any Claim": both past-participle
+% phrases, so they are grammatically parallel, and the pair carries the
+% argument the slide exists for — the timing. These were settled in advance,
+% not discovered afterwards. The right-hand set is real: the plan established
+% them by measurement over WY2000-WY2026 before the full record was built
+% (plan/SNOWPACK_REANALYSIS_PLAN.md, section 6.1), so "before any claim" is
+% literally true and not a rhetorical flourish.
+%
+% The earlier pair was "The Plan Fixes" / "And What May Be Claimed", written to
+% be read across the gap as one sentence. Do not go back to it. A box title is
+% a label, not a clause fragment, and nobody assembles a sentence across two
+% separately framed boxes — least of all two in different colours, which says
+% outright that they are different things. Worse, the join did not even parse:
+% "The Plan Fixes" takes noun phrases and completes as a sentence, while the
+% right-hand bullets are full clauses, so the "And" promised a parallel the
+% list never delivered.
+%
+% All five right-hand bullets are RULES, in the imperative voice CLAUDE.md's
+% own "Claims discipline" section uses. The fourth used to be the odd one out —
+% "MERRA-2's 1 April value is degenerate" states a property while the rest tell
+% you what to do — and "degenerate" is exact but has no room on a slide to
+% explain that it means the metric collapses into noise rather than merely
+% being unreliable. It is now the rule CLAUDE.md actually states.
+%
+% Each bullet elides the same verb (claim / quote), which is what lets
+% "rank, never magnitude" and "never MERRA-2's 1 April SWE" sit in one list.
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.485\textwidth}
-\begin{block}{The Plan Fixes}
+\begin{block}{Fixed Before Any Code}
 \small
 \begin{itemize}\itemsep0.12em
   \item the question
@@ -65,15 +92,16 @@
 \end{block}
 \end{column}
 \begin{column}{0.485\textwidth}
-% Alerted, so the pair reads as constraint against specification rather than
-% as two lists of the same kind. NASA red is the deck's only second ink.
-\begin{alertblock}{And What May Be Claimed}
+% Alerted, so the pair reads as constraint against specification rather than as
+% two lists of the same kind. Under anthropic_orange that is the dark brown —
+% the grave tier, not a louder one; see themes/anthropic_orange.tex.
+\begin{alertblock}{Fixed Before Any Claim}
 \small
 \begin{itemize}\itemsep0.12em
   \item rank, never magnitude
   \item every number names its product
   \item peak SWE needs daily data
-  \item MERRA-2's 1 April value is degenerate
+  \item never MERRA-2's 1 April SWE
   \item say where ERA5T is load-bearing
 \end{itemize}
 \end{alertblock}
