@@ -1,0 +1,52 @@
+% nasa_blue seam — colors, logo binding, graphics paths.
+% Copied from templates/nasa_blue/colors.tex and extended for this deck: the
+% talk is about work done with two vendors' coding agents, so their marks are
+% on the graphics path and their brand inks are defined alongside NASA's.
+% Everything else is the shipped theme, unedited.
+
+% --- Official NASA brand palette ---
+% NASA's core brand is three colors (blue, red, white), stable since 1992.
+% NASA Blue PMS 287 C, NASA Red PMS Bright Red C.
+\definecolor{nasaBlue}{HTML}{0B3D91}   % NASA Blue — primary
+\definecolor{nasaRed}{HTML}{FC3D21}    % NASA Red — accent / alert
+% (white is the third brand color — use plain white)
+
+% Functional shades derived from NASA blue for chrome depth (no new hues).
+\colorlet{nasaDeepBlue}{nasaBlue!70!black}   % titles on light, deep tier
+\colorlet{nasaTintBlue}{nasaBlue!8!white}    % block-body tint
+\colorlet{nasaFillBlue}{nasaBlue!16!white}   % diagram node fill
+\colorlet{nasaGray}{black!42}                % de-emphasised rule / label ink
+
+% --- Vendor inks, for the marks that appear on the title and skills slides ---
+% Anthropic clay, extracted from Claude_by_Anthropic.svg (the same value
+% templates/anthropic_orange is built on). OpenAI ships a monochrome mark, so
+% it has no ink of its own here and is set in the deck's text black.
+\definecolor{claudeClay}{RGB}{217,119,87}
+
+% --- Symbolic seam: slide patterns use ONLY these three (portability contract) ---
+\colorlet{accent}{nasaBlue}        % primary
+\colorlet{accentSoft}{nasaRed}     % secondary tier — NASA red
+\colorlet{accentDeep}{nasaDeepBlue}% deep tier (titles on light, sub-sub bullets)
+
+% --- Logo binding (bare filenames; resolved via \graphicspath below) ---
+% The meatball is a full-color insignia and does not reverse to white by a
+% fill-swap, so both macros point at the same full-color mark.
+\newcommand{\themelogo}{nasa_logo.pdf}
+\newcommand{\themelogowhite}{nasa_logo.pdf}
+
+% --- Font binding ---
+% NASA's official typeface is Helvetica (per the NASA Graphics Standards
+% Manual); helvet is the shipped stand-in. \familydefault is set explicitly
+% because beamer's font theme is the only thing that would otherwise pick sans.
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% --- Graphics paths (relative to slides/) ---
+% Both asset directories live INSIDE the deck. The marks were copied out of
+% ~/DavidFillmore/Media/graphics/logos/ rather than referenced across the
+% filesystem, so this repo builds the deck on its own: a relative path out to
+% another checkout would break for anyone who cloned only earth-eval.
+\graphicspath{%
+  {figures/}%
+  {graphics/logos/}%
+}

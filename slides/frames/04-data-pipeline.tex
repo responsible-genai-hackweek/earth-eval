@@ -1,0 +1,96 @@
+% 04-data-pipeline. Five archives, five different access routes, one funnel.
+% This is the slide the talk is built around: the agent did not call one
+% library, it read five providers' documentation and wrote a reader for each.
+%
+% Every route on the left is what the code actually does — read off
+% src/merra_modis_comparison/, not off a diagram of intent:
+%   MERRA-2  sources/merra2.py  opendap.earthdata.nasa.gov, addressed by CMR
+%            concept id + GranuleUR with a percent-encoded DAP4 constraint;
+%            Earthdata Login. earthaccess is the project's declared Earthdata
+%            client (pyproject.toml) and carries the login.
+%   ERA5     sources/era5.py    gs://gcp-public-data-arco-era5/ar/
+%            full_37-1h-0p25deg-chunk-1.zarr-v3, opened anonymously
+%   MODSCAG  sources/modscag.py daacdata.apps.nsidc.org, Earthdata Login
+%   SNOTEL   snotel.py          wcc.sc.egov.usda.gov/awdbRestApi/services/v1
+%   3DEP     terrain.py         data/usgs_3dep_coarse_dem.tif, staged once
+%
+% GEOMETRY. The product names are LEFT-aligned in a fixed slot rather than
+% right-aligned against the routes: right-aligned, the long names (MERRA-2,
+% MODSCAG) reached back across the funnel spine that used to run down the left
+% margin, and the rule struck through the type. The spine is gone with them —
+% the join is now a single arrow under the list, which cannot collide with
+% anything. The stage chain's right edge is at 7.45cm against a column of
+% 8.5cm; widening the boxes or the spacing runs it under the block to its
+% right, where it was clipped before.
+%
+% The four bullets on the right are one trap per archive, each confirmed
+% against the data and each producing a PLAUSIBLE WRONG ANSWER rather than an
+% error — which is why they belong on a slide about agents. Sources:
+% CLAUDE.md "Scientific invariants", sources/era5.py's module docstring,
+% snotel.py's module docstring.
+\begin{frame}[t]
+\frametitle{The Data Pipeline}
+\vspace{0.45em}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.575\textwidth}
+\begin{tikzpicture}[
+  prod/.style={font=\small\bfseries, text=accentDeep, anchor=west},
+  route/.style={font=\scriptsize, text=black, anchor=west},
+  st/.style={draw=accent, very thick, rounded corners=4pt, fill=nasaFillBlue,
+             minimum width=2.10cm, minimum height=0.80cm,
+             font=\scriptsize, text=accentDeep, align=center},
+  fl/.style={draw=accent, very thick, -{Stealth[length=6pt]}},
+  tie/.style={draw=accent!45, thick}]
+
+  % --- the five archives, product against the route that reaches it
+  \foreach \y/\p/\r in {
+      2.10/MERRA-2/{Cloud OPeNDAP\ \ \textbullet\ \ \texttt{earthaccess}},
+      1.51/ERA5/{ARCO-ERA5 Zarr\ \ \textbullet\ \ Google Cloud},
+      0.92/MODSCAG/{NSIDC DAAC\ \ \textbullet\ \ Earthdata Login},
+      0.33/SNOTEL/{NRCS AWDB REST\ \ \textbullet\ \ \texttt{WTEQ}},
+      -0.26/3DEP/{USGS elevation\ \ \textbullet\ \ staged once}} {
+    \node[prod]  at (0.00,\y) {\p};
+    \node[route] at (1.95,\y) {\r};
+  }
+
+  % The join: down out of the list, then an elbow LEFT into the first stage.
+  % Straight down it entered "water-year statistics" and read as though the
+  % archives fed stage two. Deliberately not a spine down the left margin —
+  % see the geometry note above.
+  \draw[tie] (4.20,-0.62) -- (4.20,-0.90);
+  \draw[fl]  (4.20,-0.90) -- (1.15,-0.90) -- (1.15,-1.34);
+
+  % --- what the routes feed, left to right
+  \node[st] (s1) at (1.15,-1.92) {daily\\checkpoints};
+  \node[st] (s2) at (4.20,-1.92) {water-year\\statistics};
+  \node[st] (s3) at (7.25,-1.92) {figures\\and findings};
+  \draw[fl] (s1) -- (s2);
+  \draw[fl] (s2) -- (s3);
+
+  \node[font=\scriptsize\itshape, text=accentSoft, anchor=north, align=center]
+    at (4.20,-2.56) {resumable, and the whole report rebuilds\\
+                     from the checkpoints with no network};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.405\textwidth}
+% Alerted: these are hazards, and NASA red is the deck's one warning ink.
+\begin{alertblock}{One Silent Trap per Archive}
+\scriptsize
+\begin{itemize}\itemsep0.34em
+  \item \textbf{ERA5} \texttt{sd} is snow \emph{water equivalent}, not depth.
+        Geometric depth is \texttt{sd\,/\,rsn}
+  \item \textbf{MERRA-2} \texttt{SNODP} is depth \emph{within} the snow-covered
+        fraction; the grid mean is \texttt{SNODP\,$\times$\,FRSNO}
+  \item \textbf{ARCO-ERA5} the time axis runs to 2050. Absent chunks read back
+        as NaN, with no error
+  \item \textbf{SNOTEL} every station sits above the domain's median cell.
+        Timing only, never magnitude
+\end{itemize}
+\end{alertblock}
+\vspace{0.25em}
+{\raggedright\scriptsize\color{accentDeep}
+Each returns a plausible wrong number rather than an error. Each is now
+written down in a skill.\par}
+\end{column}
+\end{columns}
+\end{frame}

@@ -1,0 +1,48 @@
+% 05-elevation-bands. figures/bands_swe_era5.pdf at full body height, with the
+% numbers the figure cannot state on its face beside it.
+%
+% The figure carries its own title ("Colorado Rocky Mountains ERA5 1981-2026")
+% and its own band labels, so the frametitle names the CUT rather than
+% repeating them.
+%
+% HEIGHT. The plot is 1.19:1, so on a 16:9 body it is height-bound, not
+% width-bound — widening its column does nothing and only the height figure
+% below moves it. 6.55cm is what clears the frametitle bar and the footline
+% with the caption column beside it; 6.75 overran the page by 10pt. \centering
+% rather than the center environment, whose \topsep glue was part of that.
+%
+% Every value in the table is from results/FINDINGS.md, "By elevation band",
+% which is generated from the daily checkpoints and never hand-edited. Percent
+% figures are of that band's own 46-year mean, not of the domain mean. ERA5
+% only: MERRA-2's 1 April value is degenerate in this domain and is excluded
+% by the claims discipline (CLAUDE.md), which is also why the caption names
+% the product.
+\begin{frame}[t]
+\frametitle{ERA5 by Elevation Band}
+\vspace{0.15em}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.575\textwidth}
+{\centering\includegraphics[height=6.55cm]{bands_swe_era5.pdf}\par}
+\end{column}
+\begin{column}{0.405\textwidth}
+\vspace{0.75cm}
+\begin{block}{1 April SWE, per cent of band mean}
+\scriptsize
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{@{}l@{\hspace{0.9em}}r@{\hspace{0.9em}}r@{}}
+                    & \textbf{2023} & \textbf{2026}\\
+8,000--14,500\,ft   & 140\%         & 51\%\\
+6,500--8,000\,ft    & 297\%         & 5\%\\
+\end{tabular}
+\end{block}
+\vspace{0.40em}
+{\raggedright\scriptsize\color{accentDeep}
+WY2026 is the lowest 1 April SWE of the 46 years, at 41\% of the record mean.
+The deficit is not uniform: the lower band all but vanished.\par}
+\vspace{0.55em}
+{\raggedright\scriptsize\color{accentSoft}
+ERA5. The two models disagree in magnitude, so every number names its
+product.\par}
+\end{column}
+\end{columns}
+\end{frame}

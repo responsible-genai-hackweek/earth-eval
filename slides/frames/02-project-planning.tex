@@ -1,0 +1,82 @@
+% 02-project-planning. The repository's own three-step vocabulary — research,
+% then plan, then implement (merra_modis_comparison/CLAUDE.md, "Workflow") —
+% drawn as a chain, with a review gate between phases and the artifact each
+% phase left behind counted under it.
+%
+% The counts are real and were measured, not estimated:
+%   research/  3 notes   FSCA_PRODUCT_NOTES, SNOTEL_PRODUCT_NOTES, COARSE_DEM_NOTES
+%   plan/      2 specs   SNOWPACK_REANALYSIS_PLAN (210 ln), SEASON_SHAPE_PLAN (188 ln)
+%              (the two archived FSCA plans beside them describe the superseded
+%              experiment and are deliberately not counted)
+%   src/      26 modules (excluding __init__.py)
+%   tests/   329 tests across 14 files
+% Re-measure before the talk if the branch has moved.
+%
+% The two boxes are the point of the slide. A plan that only fixed WHAT TO
+% COMPUTE would be unremarkable; this one also fixed WHAT MAY BE CLAIMED from
+% the result, and that half is what kept a plausible wrong headline off the
+% figures. Both lists are compressed from CLAUDE.md's own sections ("Scientific
+% invariants" and "Claims discipline").
+\begin{frame}[t]
+\frametitle{Project Planning}
+\vspace{0.30em}
+% The chain. Phases in the accent, gates in NASA red — the review between
+% phases is the only thing on this slide the palette's accent colour is spent
+% on, because it is the mechanism the slide is about.
+\begin{center}
+\begin{tikzpicture}[
+  ph/.style={draw=accent, very thick, rounded corners=4pt, fill=nasaFillBlue,
+             minimum width=2.45cm, minimum height=0.84cm,
+             font=\small, text=accentDeep, align=center},
+  art/.style={font=\scriptsize, text=nasaGray, align=center, anchor=north},
+  gate/.style={draw=accentSoft, very thick, fill=white, circle, inner sep=0.5pt,
+               minimum size=0.46cm, font=\scriptsize, text=accentSoft},
+  fl/.style={draw=accent, very thick}]
+
+  \node[ph] (p1) at (0.00,0) {Research};
+  \node[ph] (p2) at (3.85,0) {Plan};
+  \node[ph] (p3) at (7.70,0) {Implement};
+  \node[ph] (p4) at (11.55,0) {Verify};
+
+  \foreach \a/\b/\x in {p1/p2/1.925, p2/p3/5.775, p3/p4/9.625} {
+    \draw[fl] (\a) -- (\b);
+    \node[gate] at (\x,0) {$\checkmark$};
+  }
+
+  % What each phase left on disk. Counted, not characterised.
+  \node[art] at (0.00,-0.56)  {\codepath{research/}\\3 product notes};
+  \node[art] at (3.85,-0.56)  {\codepath{plan/}\\2 specifications};
+  \node[art] at (7.70,-0.56)  {\codepath{src/}\\26 modules};
+  \node[art] at (11.55,-0.56) {\codepath{tests/}\\329 tests};
+\end{tikzpicture}
+\end{center}
+\vspace{0.35em}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.485\textwidth}
+\begin{block}{The Plan Fixes}
+\small
+\begin{itemize}\itemsep0.12em
+  \item the question
+  \item domain and period
+  \item variables, units, conversions
+  \item the weighting rule
+  \item what is out of scope
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.485\textwidth}
+% Alerted, so the pair reads as constraint against specification rather than
+% as two lists of the same kind. NASA red is the deck's only second ink.
+\begin{alertblock}{And What May Be Claimed}
+\small
+\begin{itemize}\itemsep0.12em
+  \item rank, never magnitude
+  \item every number names its product
+  \item peak SWE needs daily data
+  \item MERRA-2's 1 April value is degenerate
+  \item say where ERA5T is load-bearing
+\end{itemize}
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}

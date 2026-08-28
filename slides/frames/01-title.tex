@@ -1,0 +1,54 @@
+% 01-title. Centred text block, title in the primary accent, marks along the
+% bottom edge.
+%
+% [plain]: no frametitle bar and no frame number on the title page.
+%
+% \PosterTitleBreak, not \inserttitle: the break belongs to this slide only.
+% \inserttitle also feeds the short title, where a forced break would misbehave.
+%
+% Authors are deliberately absent (David's direction). The date line is the
+% last text line; when authors return they go between the venue and the date.
+\begin{frame}[plain]
+  % 0.30, not 0.55: at 0.55 the date line closed to ~0.3cm above the OpenAI
+  % mark below it. Lifting the whole block opens that gap without touching the
+  % marks, which are a page overlay and do not move with the text.
+  \vspace*{0.30cm}
+  \begin{center}
+    {\fontsize{25}{30}\selectfont\bfseries\color{accent}\PosterTitleBreak\par}
+    \vspace{0.42cm}
+    {\large\color{accentDeep}\fitline{\PosterSubtitle}\par}
+    \vspace{0.30cm}
+    % The emphasis line: this talk is about the method, not only the result.
+    % NASA red, the palette's one accent, spent here and nowhere else on the
+    % slide.
+    {\large\color{accentSoft}Built with coding agents and agent skills\par}
+    \vspace{0.62cm}
+    {\normalsize\color{black}\PosterVenue\par}
+    \vspace{0.14em}
+    % Link at the size of the line it belongs to, never shrunk — the deck-wide
+    % rule. https:// dropped from the visible text.
+    {\normalsize\decklink{\PosterVenueURL}{\PosterVenueLink}\par}
+    \vspace{0.30em}
+    {\normalsize\color{black}\PosterDate\par}
+  \end{center}
+  % Marks as a page overlay rather than in the flow: an overlay occupies no
+  % vertical space, so each mark's height and its lift off the bottom edge are
+  % free to change without disturbing the text block above (which is what
+  % overran the page when they sat in the flow behind a \vfill).
+  %
+  % Three marks, optically matched rather than set to one height: the meatball
+  % is a dense full-colour disc, the OpenAI knot an open line drawing, and the
+  % Claude lockup a wordmark whose cap height is a fraction of its box. Equal
+  % \includegraphics heights would have read as three different weights.
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=south west]
+      at ([xshift=1.35cm, yshift=0.55cm]current page.south west)
+      {\includegraphics[height=1.30cm]{nasa_logo.pdf}};
+    \node[anchor=south]
+      at ([yshift=0.66cm]current page.south)
+      {\includegraphics[height=1.02cm]{ChatGPT_symbol.pdf}};
+    \node[anchor=south east]
+      at ([xshift=-1.35cm, yshift=0.80cm]current page.south east)
+      {\includegraphics[height=0.62cm]{Claude_by_Anthropic.pdf}};
+  \end{tikzpicture}
+\end{frame}

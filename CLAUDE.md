@@ -43,3 +43,7 @@ regridding, coverage gate) that was built independently against the same spec.
 - `.claude/skills/` — domain skills. `reanalysis-snowpack-comparison` covers the
   primary analysis; `snow-hydrology-fsca-evaluation` and the three it routes to
   cover the secondary WY2023 validation.
+- `slides/` — the eight-slide hackweek deck (LaTeX beamer, NASA theme). Its
+  README carries the build command and conventions. Every number on a slide is
+  taken from `results/FINDINGS.md`, so a rerun of the analysis obliges a pass
+  over the deck.

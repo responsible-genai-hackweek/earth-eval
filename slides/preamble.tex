@@ -1,0 +1,157 @@
+% hackweek_snowpack preamble — a projected 16:9 talk in the NASA theme.
+%
+% Architecture follows ~/DavidFillmore/Media/decks/agentic_ai (16:9 beamer,
+% Tectonic/XeTeX, fontspec before colors.tex, listings not minted), NOT that
+% repo's templates/nasa_blue beamerposter build: there is no poster wrapper here, so the 11x8.5in page,
+% tiles.tex/poster.tex and the banner-headroom machinery are all absent along
+% with the type-scale trouble they cause.
+%
+% Berkeley is deliberately NOT used either, though agentic_ai uses it. This
+% deck is half figures, and Berkeley's section sidebar costs ~1.6cm of every
+% slide's width — which is exactly the width a full-bleed plot wants. The
+% chrome here is one NASA-blue frametitle bar and a frame number: the
+% "minimal feel" the deck was asked for.
+\documentclass[aspectratio=169]{beamer}
+\usetheme{default}
+\useinnertheme{default}
+\useoutertheme{default}
+
+% fontspec is loaded ONLY so the CLI transcript panel can use Menlo, and it
+% must come BEFORE colors.tex (which loads helvet). Two traps, both silent:
+% fontspec resets \rmdefault/\sfdefault to Latin Modern, so loaded after
+% colors.tex it takes the whole deck off Helvetica; and it switches
+% \encodingdefault from T1 to TU, while the deck's Helvetica exists only as
+% T1/phv — every request then falls back to LM Roman and the deck turns serif
+% with no error and a clean build. Restore T1 here; \clifont carries its own
+% TU encoding from \newfontfamily.
+\usepackage{fontspec}
+\renewcommand{\encodingdefault}{T1}\normalfont
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+% Tectonic reads UTF-8 natively, so a literal em dash has no mapping into the
+% T1-encoded body font and is silently dropped ("Missing character"). inputenc
+% is a no-op on a unicode-native engine, so map it by catcode.
+\catcode`\—=\active
+\def—{\textemdash}
+
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds,
+                calc, decorations.pathreplacing, shapes.callouts, shapes.symbols}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% listings, never minted — no shell-escape under Tectonic.
+\usepackage{listings}
+\definecolor{lstbg}{RGB}{245,245,245}
+\lstset{basicstyle=\footnotesize\ttfamily, breaklines=true, frame=single,
+        backgroundcolor=\color{lstbg}}
+
+% Palette, symbolic seam, logo binding and graphics paths.
+\input{colors}
+
+% --- Beamer chrome ------------------------------------------------------
+% Written against the symbolic seam (accent / accentSoft / accentDeep) rather
+% than the literal nasa* names, so the deck stays portable to another theme's
+% colors.tex — the same contract templates/ documents.
+\setbeamercolor{structure}{fg=accent}
+\setbeamercolor{palette primary}{bg=accent, fg=white}
+\setbeamercolor{frametitle}{bg=accent, fg=white}
+\setbeamercolor{title}{fg=accent}
+\setbeamercolor{block title}{bg=accent, fg=white}
+\setbeamercolor{block body}{bg=nasaTintBlue, fg=black}
+\setbeamercolor{block title alerted}{bg=accentSoft, fg=white}
+\setbeamercolor{block body alerted}{bg=accentSoft!8!white, fg=black}
+\setbeamercolor{item}{fg=accent}
+\setbeamercolor{subitem}{fg=accentSoft}
+\setbeamerfont{block title}{series=\bfseries, size=\small}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{blocks}[rounded][shadow=false]
+\setbeamertemplate{itemize item}{\textbullet}
+\setbeamertemplate{itemize subitem}{--}
+
+% Wider text block than the default outer theme's 1cm: this deck's figures are
+% the argument and every millimetre of width shows up in them.
+\setbeamersize{text margin left=0.55cm, text margin right=0.55cm}
+
+% Full-bleed frametitle bar. The stock `default' outer theme sets the title as
+% plain text with no ground, so the bar has to be built here; a beamercolorbox
+% at \paperwidth is what makes it run edge to edge rather than stopping at the
+% text margins.
+\setbeamerfont{frametitle}{series=\bfseries, size=\large}
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth, sep=0pt,
+                         leftskip=0.55cm, rightskip=0.55cm]{frametitle}%
+    \vskip0.42em\usebeamerfont{frametitle}\insertframetitle\vskip0.46em%
+  \end{beamercolorbox}%
+}
+
+% Footline: the frame number alone, in the accent, at the right margin. No
+% bar, no author/title repeat — the deck is eight slides and none of it earns
+% a persistent strip.
+\setbeamertemplate{footline}{%
+  \hfill{\usebeamerfont{footline}\scriptsize\color{accent}\insertframenumber}%
+  \hspace{0.55cm}\vskip3pt%
+}
+
+% --- \fitline{<content>} -------------------------------------------------
+% Set <content> on one line within \linewidth, shrinking only if it would
+% otherwise wrap. Never enlarges.
+\newlength{\fitlinewd}
+\newcommand{\fitline}[1]{%
+  \settowidth{\fitlinewd}{#1}%
+  \ifdim\fitlinewd>\linewidth
+    \resizebox{\linewidth}{!}{#1}%
+  \else
+    #1%
+  \fi
+}
+
+% --- Link convention (deck-wide) -----------------------------------------
+% EVERY link renders as REGULAR TEXT, UNDERLINED — no color shift, no
+% italics, no beamer link box. Routed through a macro so the convention is
+% enforced by construction: change it here, not at each call site. \mbox keeps
+% a URL from breaking mid-rule at a line end.
+\newcommand{\decklink}[2]{\href{#1}{\mbox{\underline{#2}}}}
+\hypersetup{colorlinks=false, pdfborder={0 0 0}}
+
+% \codepath{...} — typewriter formatting for path and identifier references.
+\newcommand{\codepath}[1]{\texttt{\small #1}}
+
+% --- Caption line --------------------------------------------------------
+% \figcaption{...} — the one line of prose a figure slide is allowed. Set
+% small, in the deep tier, so it reads as annotation rather than body text.
+\newcommand{\figcaption}[1]{%
+  {\centering\small\color{accentDeep}#1\par}}
+
+% --- Claude Code CLI transcript panel ------------------------------------
+% Authentic terminal read: set in Menlo, the macOS Terminal font, loaded
+% through fontspec (Tectonic runs XeTeX, so the system font is available by
+% name). Content is real Unicode in a monospace grid, NOT TikZ-drawn glyphs —
+% keeping every mark on the same character cell is what makes it read as a
+% terminal. TikZ draws the panel rectangle only. Menlo lacks the CLI's own
+% U+23FA and U+23BF, so U+25CF and U+2514 stand in.
+\newfontfamily\clifont{Menlo}[Scale=0.90]
+
+\definecolor{cliBg}{HTML}{1F1E1D}      % warm near-black terminal ground
+\definecolor{cliBorder}{HTML}{3A3733}
+\definecolor{cliFg}{HTML}{E8E6E3}
+\definecolor{cliDim}{HTML}{8B8580}     % tool arguments, result lines
+
+\newcommand{\cliprompt}[1]{{\color{claudeClay}\bfseries>}\ {\color{cliFg}#1}}
+\newcommand{\cliassist}[1]{{\color{claudeClay}●}\ {\color{cliFg}#1}}
+\newcommand{\clitool}[2]{{\color{claudeClay}●}\ {\color{cliFg}#1}{\color{cliDim}(#2)}}
+\newcommand{\cliresult}[1]{\hspace{0.9em}{\color{cliDim}└\hspace{0.4em}#1}}
+
+% \clipanel[<width>]{<lines>} — the transcript panel. Separate lines with \\.
+\newcommand{\clipanel}[2][0.90\textwidth]{%
+  \begin{center}
+  \begin{tikzpicture}
+    \node[draw=cliBorder, fill=cliBg, rounded corners=5pt, inner sep=11pt,
+          text width=#1, align=left, font=\clifont\small, text=cliFg] {#2};
+  \end{tikzpicture}
+  \end{center}}

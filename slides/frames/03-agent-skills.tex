@@ -1,0 +1,91 @@
+% 03-agent-skills. What a skill IS on the left, drawn as the file itself; the
+% eight we actually defined on the right, grouped by what they govern.
+%
+% The SKILL.md card is DRAWN rather than quoted: the frontmatter is `name` and
+% `description`, and the description is what the agent matches on to decide
+% whether to load the file at all. That matching is the whole mechanism the
+% slide is trying to convey, so it gets the annotation.
+%
+% The eight names are exactly .claude/skills/*/ on this branch. The grouping is
+% editorial and is not in the repo:
+%   Science     reanalysis-snowpack-comparison, snow-hydrology-fsca-evaluation,
+%               modis-merra-regridding, snow-bias-statistics-and-figures
+%   Run         earthdata-streaming-checkpoints, resumable-fetch-run-integrity,
+%               derived-quantity-integrity
+%   Figures     designing-thematic-figures
+% Names are set in \texttt at \scriptsize because several run long and the
+% column cannot take them at body size; they are directory names, so the
+% monospace is honest rather than decorative.
+\begin{frame}[t]
+\frametitle{Agent Skills}
+\vspace{0.30em}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.395\textwidth}
+% [T] aligns the tops of the column BOXES, but this column's first content is a
+% tikzpicture whose bounding box starts at its own y=0.78 — so the card sat
+% ~0.5cm below the first block opposite it. Lift the column by that much rather
+% than moving every node in the picture.
+\vspace*{-0.42cm}
+\begin{center}
+\begin{tikzpicture}[
+  card/.style={draw=accent, very thick, rounded corners=4pt, fill=white},
+  fm/.style={font=\scriptsize\ttfamily, text=accentDeep, anchor=west},
+  bd/.style={font=\scriptsize, text=accentDeep, anchor=west}]
+
+  % The file: frontmatter above the rule, body below.
+  \draw[card, fill=nasaFillBlue] (0,0.16) rectangle (5.05,0.78);
+  \draw[card]                    (0,-2.18) rectangle (5.05,0);
+  \node[font=\small\ttfamily, text=accentDeep] at (2.52,0.47) {SKILL.md};
+
+  \node[fm] at (0.26,-0.32) {name:};
+  \node[fm] at (0.26,-0.70) {description:};
+  % The annotation the slide exists for.
+  \node[font=\scriptsize\itshape, text=accentSoft, anchor=west]
+    at (2.20,-0.70) {when to use it};
+  \draw[accentSoft, thick] (0.26,-0.98) -- (4.79,-0.98);
+  \node[bd] at (0.26,-1.30) {the traps};
+  \node[bd] at (0.26,-1.64) {the conventions};
+  \node[bd] at (0.26,-1.98) {what may be claimed};
+\end{tikzpicture}
+\end{center}
+\vspace{0.15em}
+{\raggedright\small the agent matches on the description\par}
+\vspace{0.35em}
+{\raggedright\small \dots\ so it loads itself,\\
+\hspace*{1.0em}before it can get it wrong\par}
+% The Claude mark, small, under the card — the agent these were written for.
+\vspace{0.45em}
+\includegraphics[height=0.46cm]{Claude_by_Anthropic.pdf}
+\end{column}
+\begin{column}{0.585\textwidth}
+\begin{block}{Science}
+\scriptsize
+\begin{itemize}\itemsep0.02em
+  \item \texttt{reanalysis-snowpack-comparison}
+  \item \texttt{snow-hydrology-fsca-evaluation}
+  \item \texttt{modis-merra-regridding}
+  \item \texttt{snow-bias-statistics-and-figures}
+\end{itemize}
+\end{block}
+\vspace{-0.15em}
+\begin{block}{Run Integrity}
+\scriptsize
+\begin{itemize}\itemsep0.02em
+  \item \texttt{earthdata-streaming-checkpoints}
+  \item \texttt{resumable-fetch-run-integrity}
+  \item \texttt{derived-quantity-integrity}
+\end{itemize}
+\end{block}
+\vspace{-0.15em}
+\begin{block}{Communication}
+\scriptsize
+\begin{itemize}\itemsep0.02em
+  \item \texttt{designing-thematic-figures}
+\end{itemize}
+\end{block}
+\vspace{0.20em}
+{\raggedright\scriptsize\color{accentDeep}
+Eight skills, written during the work, from what went wrong in it.\par}
+\end{column}
+\end{columns}
+\end{frame}

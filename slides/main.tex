@@ -1,0 +1,31 @@
+% Deck entry point — hackweek_snowpack, nasa_blue theme, 16:9 projected talk.
+% Eight slides summarising the Responsible Gen-AI for NASA Earthdata hackweek
+% project: what was built, and — the emphasis — how coding agents and skills
+% built it.
+%
+% Build: slides/build.sh  (tectonic, then the overfull-vbox gate)
+%
+% The deck is a copy of the nasa_blue theme's seam, not a reference to it:
+% preamble.tex, colors.tex and graphics/logos/ are all local, so earth-eval
+% builds this on its own without ~/DavidFillmore/Media on disk.
+\input{preamble}
+\input{meta}
+
+\title[\PosterTitle]{\textbf{\PosterTitle}}
+\subtitle{\PosterSubtitle}
+\date{\PosterDate}
+
+\begin{document}
+
+% File order = show order. Three method slides, then five of results —
+% the method first because it is what the talk is about.
+\input{frames/01-title}
+\input{frames/02-project-planning}
+\input{frames/03-agent-skills}
+\input{frames/04-data-pipeline}
+\input{frames/05-elevation-bands}
+\input{frames/06-two-models}
+\input{frames/07-wet-dry-composites}
+\input{frames/08-bias-and-mae}
+
+\end{document}

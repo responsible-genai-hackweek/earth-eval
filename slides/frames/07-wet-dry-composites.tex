@@ -1,0 +1,31 @@
+% 07-wet-dry-composites. figures/wy2023_wet_dry_composite_rot.png, alone on the
+% frame at full width.
+%
+% ROTATION. The source is 1282 x 3387 — a seven-row portrait column that cannot
+% be read on a 16:9 page at any useful size. It is rotated 90 degrees
+% COUNTER-CLOCKWISE, and the direction is not arbitrary: CCW sends the original
+% top row to the left column, so months run November to May LEFT TO RIGHT.
+% Clockwise rotation was rendered and compared, and puts May at the left with
+% time running backwards. The rotation is baked into the file (sips -r -90),
+% not applied here with \rotatebox, so the aspect ratio \includegraphics sees
+% is the one on the page.
+%
+% After rotation: dry water years on the TOP row, wet on the BOTTOM; within
+% each panel latitude now runs horizontally and longitude vertically, which is
+% the unavoidable cost of rotating a map figure.
+%
+% The reference product is SPIReS (SPIRES_HIST v1), NOT MODSCAG — the figure's
+% own colorbar says so. They are different spectral-mixture retrievals and
+% research/FSCA_PRODUCT_NOTES.md is explicit that one must not be relabelled
+% the other. Slide 08's panels are MODSCAG; do not merge the two captions.
+\begin{frame}[t]
+\frametitle{fSCA Bias, Wet Years against Dry}
+\vspace{0.45em}
+\begin{center}
+\includegraphics[width=0.995\linewidth]{wy2023_wet_dry_composite_rot.png}
+\end{center}
+\vspace{0.30em}
+\figcaption{MERRA-2 minus SPIReS, normalized mean fSCA bias, WY2010--2023.
+Dry water years above, wet below; November at left, May at right.
+Hatching marks uncorrected two-sided $p < 0.05$.}
+\end{frame}

@@ -1,0 +1,15 @@
+# LaTeX build intermediates. main.pdf is deliberately NOT ignored: the deck is
+# the deliverable and gets presented from, sometimes on a machine with no
+# tectonic. Everything below regenerates from main.tex on any build.
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+missfont.log
+.DS_Store

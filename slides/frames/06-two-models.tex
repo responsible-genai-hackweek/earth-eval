@@ -1,0 +1,47 @@
+% 06-two-models. The two figures that carry the project's actual finding, side
+% by side: the models against each other, and both against the one
+% observational record that can arbitrate between them.
+%
+% LEFT  figures/model_comparison_swe.pdf — every water year from both models on
+%       shared axes. The ensembles barely overlap: MERRA-2 exceeds ERA5's mean
+%       in 0 of 46 years, and the mean peak-SWE ratio is 3.3 (FINDINGS.md,
+%       "How far apart are the two models?"). Rank correlation on peak SWE is
+%       rho = 0.734 over n = 46.
+% RIGHT figures/season_shape.pdf — each series normalised by its own peak, so
+%       the panel compares SHAPE and says nothing about magnitude. That is the
+%       whole point: every Colorado SNOTEL station sits above the domain's
+%       median cell elevation, so the network can arbitrate timing and must
+%       never be placed beside a raw domain magnitude (plan/SEASON_SHAPE_PLAN.md).
+%       MERRA-2 peaks in February; SNOTEL and ERA5 peak in early April.
+%
+% COLUMN WIDTHS are proportional to the two figures' ASPECT RATIOS (1.750 and
+% 1.508, measured off the PDFs), not equal. Equal columns at \linewidth gave
+% the two plots different heights, which put their captions on different
+% baselines and pushed the right-hand one off the page. Proportional columns
+% let both fill their width AND land on the same height, so the caption pair
+% reads as one line of the slide. If either figure is regenerated at a new
+% aspect, recompute: w_i = a_i / (a_1 + a_2), less half the gap each.
+\begin{frame}[t]
+\frametitle{Two Reanalyses, One Observational Check}
+\vspace{0.85em}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.527\textwidth}
+{\centering\includegraphics[width=\linewidth]{model_comparison_swe.pdf}\par}
+\vspace{0.55em}
+\figcaption{A factor of 3.3 apart in mean peak SWE.\\
+MERRA-2 exceeds ERA5's mean in 0 of 46 years.}
+\vspace{0.35em}
+{\centering\scriptsize\color{accentSoft}
+Yet they rank the years alike: $\rho = 0.73$\par}
+\end{column}
+\begin{column}{0.453\textwidth}
+{\centering\includegraphics[width=\linewidth]{season_shape.pdf}\par}
+\vspace{0.55em}
+\figcaption{Each series scaled by its own peak.\\
+SNOTEL arbitrates timing only.}
+\vspace{0.35em}
+{\centering\scriptsize\color{accentSoft}
+MERRA-2 peaks two months early\par}
+\end{column}
+\end{columns}
+\end{frame}
