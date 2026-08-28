@@ -1,0 +1,30 @@
+% 09-water-year-mean. The second half of the old three-figure frame: the whole
+% water year in one pair of maps, after 08 has resolved it by month.
+%
+% The figure is 2.465:1 and takes the full text width, which is the size it
+% could never reach while sharing a frame — it was set to 6.46cm there against
+% 13.4cm here. A landscape figure this wide is width-bound, so the only lever
+% on its height is the width, and the caption pair below is what limits that.
+%
+% The melt-out dates are the sharpest result in the WY2023 validation and had
+% nowhere to appear while three figures shared a frame. From
+% results/FINDINGS.md: melt-out is the last day domain snow cover stays above
+% 0.10, and MERRA-2 reaches it 24 days early against MODSCAG while ERA5 holds
+% snow 19 days late — an error of the same size in each direction, which is
+% the point of quoting all three.
+%
+% The bias claim in the caption is read off the figure itself: the deepest
+% negative bias and the largest MAE are both in the domain's northwest corner.
+\begin{frame}[t]
+\frametitle{The Water Year as a Whole, Water Year 2023}
+\vspace{0.45em}
+{\centering\includegraphics[width=0.900\linewidth]{water_year_2023_bias_mae_spatial.png}\par}
+\vspace{0.55em}
+% Kept to one line: at \small across the full text width the longer version
+% wrapped with "domain." alone on the second line.
+\figcaption{Mean bias and MAE by cell, 347 paired days. Both largest in the
+northwest.}
+\vspace{0.30em}
+\figaside{Melt-out, the last day cover stays above 0.10 --- MODSCAG 20 May,
+ERA5 8 June, MERRA-2 26 April}
+\end{frame}

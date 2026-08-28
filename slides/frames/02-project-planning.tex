@@ -51,35 +51,48 @@
 \end{tikzpicture}
 \end{center}
 \vspace{0.35em}
-% TITLES ARE A MATCHED PAIR and each has to stand on its own. They read
-% "Fixed Before Any Code" / "Fixed Before Any Claim": both past-participle
-% phrases, so they are grammatically parallel, and the pair carries the
-% argument the slide exists for — the timing. These were settled in advance,
-% not discovered afterwards. The right-hand set is real: the plan established
-% them by measurement over WY2000-WY2026 before the full record was built
-% (plan/SNOWPACK_REANALYSIS_PLAN.md, section 6.1), so "before any claim" is
-% literally true and not a rhetorical flourish.
+% TITLES ARE A MATCHED PAIR — "Fixed Before Any Code" / "Fixed Before Any
+% Number" — and each stands on its own. Two concrete nouns, so they are
+% parallel, and the pair carries the argument the slide exists for: the timing.
+% Before a single number was quoted, the plan had settled which numbers the
+% data would be able to support. That is literally true, not a flourish — the
+% right-hand set was established by measurement over WY2000-WY2026 before the
+% full record was built (plan/SNOWPACK_REANALYSIS_PLAN.md, section 6.1).
 %
-% The earlier pair was "The Plan Fixes" / "And What May Be Claimed", written to
-% be read across the gap as one sentence. Do not go back to it. A box title is
-% a label, not a clause fragment, and nobody assembles a sentence across two
-% separately framed boxes — least of all two in different colours, which says
-% outright that they are different things. Worse, the join did not even parse:
-% "The Plan Fixes" takes noun phrases and completes as a sentence, while the
-% right-hand bullets are full clauses, so the "And" promised a parallel the
-% list never delivered.
+% TWO EARLIER VERSIONS FAILED. Do not go back to either.
 %
-% All five right-hand bullets are RULES, in the imperative voice CLAUDE.md's
-% own "Claims discipline" section uses. The fourth used to be the odd one out —
-% "MERRA-2's 1 April value is degenerate" states a property while the rest tell
-% you what to do — and "degenerate" is exact but has no room on a slide to
-% explain that it means the metric collapses into noise rather than merely
-% being unreliable. It is now the rule CLAUDE.md actually states.
+% "The Plan Fixes" / "And What May Be Claimed" was written to be read across
+% the gap as one sentence. A box title is a label, not a clause fragment, and
+% nobody assembles a sentence across two separately framed boxes — least of all
+% two in different colours, which says outright that they are different things.
+% The join did not even parse: the left box takes noun phrases and completes as
+% a sentence; the right-hand bullets were full clauses.
 %
-% Each bullet elides the same verb (claim / quote), which is what lets
-% "rank, never magnitude" and "never MERRA-2's 1 April SWE" sit in one list.
+% "Fixed Before Any Claim" with imperative bullets then failed on VOCABULARY,
+% which is the harder fault because it builds clean and reads fluently. Three
+% terms said nothing to the room:
+%
+%   "every number names its product"  — devoid of meaning. "Product" is archive
+%     vocabulary for a dataset, and the sentence never says WHY. The real point
+%     is that the two models disagree about amount by a factor of three or
+%     more, so any snow amount is a fact about THAT MODEL and not about
+%     Colorado. The bullet now says which model, in those words.
+%   "load-bearing"  — an engineering metaphor. The real point is that the last
+%     months of WY2026 come from ERA5T, the preliminary stream, which can still
+%     be revised. The bullet now says preliminary.
+%   "claim"  — reads as jargon in a title. The box is about what the result may
+%     say, and "number" is the concrete thing every bullet is actually about.
+%
+% Bullets are noun phrases, matching the left box, so both lists genuinely
+% complete their own title. Each carries its REASON where it has room —
+% "not MERRA-2 in April, it has melted out" is a rule and its justification in
+% seven words, which the bare rule was not. Sources, in order:
+% CLAUDE.md "Claims discipline" bullets 5, 5, 2, 3 and 6.
+%
+% Every term here should survive being said out loud to someone who does not
+% work on this. That is the test the previous two versions failed.
 \begin{columns}[T,onlytextwidth]
-\begin{column}{0.485\textwidth}
+\begin{column}{0.395\textwidth}
 \begin{block}{Fixed Before Any Code}
 \small
 \begin{itemize}\itemsep0.12em
@@ -91,18 +104,18 @@
 \end{itemize}
 \end{block}
 \end{column}
-\begin{column}{0.485\textwidth}
+\begin{column}{0.575\textwidth}
 % Alerted, so the pair reads as constraint against specification rather than as
 % two lists of the same kind. Under anthropic_orange that is the dark brown —
 % the grave tier, not a louder one; see themes/anthropic_orange.tex.
-\begin{alertblock}{Fixed Before Any Claim}
+\begin{alertblock}{Fixed Before Any Number}
 \small
 \begin{itemize}\itemsep0.12em
-  \item rank, never magnitude
-  \item every number names its product
-  \item peak SWE needs daily data
-  \item never MERRA-2's 1 April SWE
-  \item say where ERA5T is load-bearing
+  \item which years were extreme, not how much snow
+  \item which model each number came from
+  \item daily data for peak snowpack, never weekly
+  \item not MERRA-2 in April, it has melted out
+  \item where WY2026 rests on preliminary ERA5T
 \end{itemize}
 \end{alertblock}
 \end{column}

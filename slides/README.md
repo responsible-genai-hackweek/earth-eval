@@ -1,6 +1,6 @@
 # Hackweek deck
 
-Eight slides summarising this project for the
+Nine slides summarising this project for the
 [Responsible Gen-AI for NASA Earthdata hackweek](https://responsible-genai.hackweek.io/)
 (UW eScience Institute with NASA, Seattle, 24–28 August 2026). The emphasis is
 the method — coding agents, agent skills, and the data pipeline they built —

@@ -1,0 +1,42 @@
+% 08-month-by-month. The first half of what used to be one three-figure frame.
+% The split is by WHAT THE FIGURE SHOWS, not merely to make room: these two are
+% both monthly views of the same 347 paired days — the grid resolves them in
+% space, the series in time — and the water-year summary that used to sit with
+% them is now 09.
+%
+% The split also fixes the geometry the old frame fought. Two landscape figures
+% stacked need about 0.91x their width in height, which is more than the body
+% has, so both had to be set well under the column width and the frame carried
+% ~2cm of unusable margin. Pairing the PORTRAIT grid with ONE landscape figure
+% lets each take its natural size.
+%
+% Numbers are from results/FINDINGS.md, "Satellite validation, WY2023",
+% converted from fraction to percentage points (-0.043 -> -4.3 pp,
+% 0.057 -> 5.7 pp) so the block reads in the same unit as the axes beside it.
+% The annual mean is far below the winter monthly values on the plot because
+% the 347 days include a summer with no snow on either side.
+\begin{frame}[t]
+\frametitle{fSCA Bias Month by Month, Water Year 2023}
+\vspace{0.15em}
+\begin{columns}[c,onlytextwidth]
+\begin{column}{0.415\textwidth}
+{\centering\includegraphics[height=6.00cm]{water_year_2023_monthly_spatial_grid.png}\par}
+\end{column}
+\begin{column}{0.570\textwidth}
+{\centering\includegraphics[width=0.97\linewidth]{water_year_2023_monthly_bias_mae.png}\par}
+\vspace{0.55em}
+\begin{block}{MERRA-2 minus MODSCAG}
+\scriptsize
+\renewcommand{\arraystretch}{1.30}
+\begin{tabular}{@{}l@{\hspace{1.1em}}r@{}}
+paired days & 347 of 365\\
+mean bias   & $-4.3$ pp\\
+MAE         & 5.7 pp\\
+\end{tabular}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.30em}
+\figcaption{The model runs low against the satellite through accumulation and
+converges at melt-out.}
+\end{frame}
