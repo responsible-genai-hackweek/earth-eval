@@ -18,8 +18,26 @@ for NASA Reanalyses --- Colorado Snowpack}
 \newcommand{\PosterVenueURL}{https://responsible-genai.hackweek.io/}
 \newcommand{\PosterVenueLink}{responsible-genai.hackweek.io}
 
-% Authors are deliberately absent for now, at David's direction. When they go
-% back on, add \PosterAuthor here and a line for it on slides/01-title.
+% Author list, alphabetical by surname, with superscripts keyed to the
+% affiliation line below it. David carries two, hence 2,3.
+%
+% These sit ABOVE the venue, not between the venue and the date as the earlier
+% restore note said: that note was written for a single author line, and a full
+% list with its own affiliation row belongs with the title block rather than
+% inside the venue/date group.
+%
+% \quad between entries rather than commas: three names and four affiliations
+% are two lists, and commas inside "2,3" would then be doing two jobs at once.
+\newcommand{\PosterAuthors}{%
+  Clinton Alden\textsuperscript{1}\quad
+  David Fillmore\textsuperscript{2,3}\quad
+  Keiko Nomura\textsuperscript{4}}
+
+\newcommand{\PosterAffils}{%
+  \textsuperscript{1}University of Washington\quad
+  \textsuperscript{2}NSF NCAR\quad
+  \textsuperscript{3}NASA Langley Research Center\quad
+  \textsuperscript{4}NASA Ames Research Center}
 
 % Talk date, not \today: the deck builds on other days but the slide must show
 % the day it is given. The hackweek ran 2026-08-24 to 2026-08-28, in Seattle.

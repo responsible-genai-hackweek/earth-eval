@@ -23,10 +23,35 @@
 % Dropping the Claude wordmark for the starburst is what let all four go large.
 %
 % Heights are set per mark, not shared, because these four carry very different
-% ink. The meatball is a solid disc and the heaviest thing on the slide, so it
-% is NOT the tallest; the starburst is thin radial strokes and takes the most
-% height before it matches. Order is hosts then tools: NASA and UW ran the
-% hackweek, OpenAI and Anthropic made the agents.
+% ink. The starburst is thin radial strokes and needs the most height before it
+% matches a solid disc, which is why the meatball was originally set SMALLER
+% than it — 1.95cm against 2.10cm.
+%
+% That is no longer the arrangement. The meatball is now the largest mark at
+% 2.28cm and raised 0.22cm clear of the baseline the other three share. It costs
+% page: the band grew 0.36cm, and every gap in the text block above came in to
+% pay for it — the trade the note at the head of this file describes. Taking the
+% meatball back down is what buys that space back if the type ever needs it.
+%
+% ORDER: the two hackweek HOSTS bracket the two TOOLS — NASA at the left, the
+% Block W at the right, OpenAI and Anthropic between them. It ran hosts-then-
+% tools (NASA, UW, OpenAI, Anthropic) until the marks were seen on the page.
+%
+% The two hosts are also raised off the baseline the two tools still sit on, so
+% the bracketing reads in the vertical as well as the horizontal. The raises are
+% NOT equal — meatball 0.22cm, Block W 0.36cm — because the two marks are not the
+% same size, 2.28cm against 1.82cm. Equal raises would have aligned their bottoms
+% and left the smaller W looking dropped; matching their tops outright needs
+% 0.68cm and leaves a visible hole beneath it. 0.36cm splits the difference and
+% brings the W's top to 2.18cm, just above the Anthropic starburst's 2.10cm.
+%
+% Tuned by eye against the render, which is the only way to set this: the marks
+% are different shapes and no arithmetic on their bounding boxes says when a
+% band looks level. Re-look if any height here changes.
+%
+% Raising the W is a position change, not a transformation of the mark, so it
+% stays within the UW rules in graphics/logos/SOURCES.md — no rotation, no crop,
+% no stretch, and still exactly one of height or width.
 %
 % \makebox to a fixed width with \hfill between, rather than four positioned
 % nodes: the gaps then equalise themselves and stay equal when a height is
@@ -40,34 +65,44 @@
 % however the type or the mark heights are retuned, and if they ever cannot
 % both fit the build fails on Overfull \vbox instead of overprinting.
 \begin{frame}[plain]
-  \vspace*{0.15cm}
+  \vspace*{0.02cm}
   \begin{center}
-    {\fontsize{19}{23}\selectfont\bfseries\color{accent}\PosterTitleBreak\par}
-    \vspace{0.34cm}
+    {\fontsize{17}{20.5}\selectfont\bfseries\color{accent}\PosterTitleBreak\par}
+    \vspace{0.14cm}
     {\large\color{accentDeep}\fitline{\PosterSubtitle}\par}
-    \vspace{0.24cm}
+    \vspace{0.10cm}
     % The emphasis line: this talk is about the method, not only the result.
     % BOLD, not just the second colour. Under nasa_blue this line was NASA red
     % and carried itself; under anthropic_orange accentSoft is a dark brown
     % that sits close to the subtitle's ink, so weight does the work instead
     % and the line reads as the point under either theme.
     {\large\bfseries\color{accentSoft}Built with Coding Agents and Agent Skills\par}
-    \vspace{0.46cm}
+    % 0.30cm, not the 0.46cm that stood here before the authors went in: the
+    % author and affiliation rows cost about 1.1cm and the page had 1.6pt of
+    % slack, so the gap above them is where it came from. The mark band is
+    % untouched — see the note at the head of this file.
+    \vspace{0.14cm}
+    % Authors above the venue, affiliations under them in the muted tier so the
+    % names carry and the institutions annotate. Both come from meta.tex.
+    {\normalsize\color{black}\PosterAuthors\par}
+    \vspace{0.14em}
+    {\scriptsize\color{mutedInk}\PosterAffils\par}
+    \vspace{0.14cm}
     {\normalsize\color{black}\PosterVenue\par}
     \vspace{0.10em}
     % Link at the size of the line it belongs to, never shrunk — the deck-wide
     % rule. https:// dropped from the visible text.
     {\normalsize\decklink{\PosterVenueURL}{\PosterVenueLink}\par}
-    \vspace{0.22em}
+    \vspace{0.10em}
     {\normalsize\color{black}\PosterDate\par}
   \end{center}
   \vfill
   \begin{center}
     \makebox[13.4cm]{%
-      \includegraphics[height=1.95cm]{nasa_logo.pdf}\hfill
-      \includegraphics[height=1.82cm]{uw_block_w.pdf}\hfill
-      \includegraphics[height=1.86cm]{ChatGPT_symbol.pdf}\hfill
-      \includegraphics[height=2.10cm]{Claude_symbol_clay.pdf}}
+      \hspace{0.45cm}%
+      \raisebox{0.30cm}{\includegraphics[height=2.96cm]{nasa_logo.pdf}}\hfill
+      \includegraphics[height=2.23cm]{ChatGPT_symbol.pdf}\hfill
+      \includegraphics[height=2.10cm]{Claude_symbol_clay.pdf}\hfill
+      \raisebox{0.36cm}{\includegraphics[height=1.82cm]{uw_block_w.pdf}}}
   \end{center}
-  \vspace{0.10cm}
 \end{frame}

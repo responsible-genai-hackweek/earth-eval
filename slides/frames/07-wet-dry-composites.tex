@@ -1,44 +1,42 @@
-% 07-wet-dry-composites. figures/wy2023_wet_dry_composite_rot.png, alone on the
-% frame at full width.
+% 07. MERRA-2 against MODSCAG, mean fSCA bias, split DJF against MAM.
+% figures/merra2_modscag_seasonal_bias.png, alone on the frame.
 %
-% ROTATION. The source is 1282 x 3387 — a seven-row portrait column that cannot
-% be read on a 16:9 page at any useful size, so it is rotated into landscape.
-% The rotation is baked into the file (sips), not applied here with \rotatebox,
-% so the aspect ratio \includegraphics sees is the one on the page.
+% THIS REPLACED A DIFFERENT FIGURE and the whole frame changed with it. What
+% stood here was wy2023_wet_dry_composite_rot.png: MERRA-2 minus SPIReS,
+% NORMALIZED bias, seven months across and wet water years against dry down.
+% The new figure shares none of that — different reference product, different
+% units, different split — so the frametitle, the caption and the sizing are all
+% new rather than edited. The old file is still in figures/ and is now unused.
 %
-% THE DIRECTION IS A TRADE, and it has been made both ways. The month names are
-% matplotlib y-labels, already set at 90 degrees in the source, so a rigid
-% rotation cannot leave them upright and keep time running forwards:
-%   CCW (sips -r -90)  months read November to May LEFT TO RIGHT, but every
-%                      month name and Latitude label lands UPSIDE DOWN.
-%   CW  (sips -r 90)   labels land upright and readable, but the columns
-%                      reverse: May at the left, time running backwards.
-% The deck ran CCW until the upside-down labels were caught in a render; it is
-% now CW, at David's direction. The caption states the reversed month order
-% outright, because the figure no longer reads left to right and a reader who
-% assumes it does will read the season backwards.
+% THE REFERENCE PRODUCT CHANGED, SPIReS to MODSCAG. That is not a relabelling:
+% research/FSCA_PRODUCT_NOTES.md is explicit that the two are different
+% spectral-mixture retrievals and must never be swapped in a caption. The new
+% figure's own colorbar says MODSCAG, so the caption says MODSCAG — and the
+% deck is now consistent, because 08 and 09 are MODSCAG too. The SPIReS
+% comparison no longer appears anywhere in the deck.
 %
-% Only regenerating the figure in a LANDSCAPE layout — months as columns from
-% the start — gets upright labels and forward time together. There is no
-% generator for this figure on this branch; it survives from the superseded
-% fSCA experiment, so that is not a quick change.
+% PERIOD IS INFERRED, NOT READ OFF THE FIGURE. The panels carry no years. It is
+% given as WY2010-2023 because that is the range of the only multiyear MODSCAG
+% comparison in the repo (plan/MULTIYEAR_MODSCAG_PLAN.md is titled "Water years
+% 2010-2023 STC-MODSCAG comparison") and because 72 is this domain's cell count,
+% matching the panels' 53/72 and 58/72. CONFIRM BEFORE THE TALK: unlike every
+% other number in the deck this one is not traceable to results/FINDINGS.md.
 %
-% After rotation: wet water years on the TOP row, dry on the BOTTOM; within
-% each panel latitude now runs horizontally and longitude vertically, which is
-% the unavoidable cost of rotating a map figure.
+% SIZE. The figure is 1279x947, so 1.351:1 — nearly square by this deck's
+% standards and HEIGHT-bound on a 16:9 page. Widening its box does nothing; only
+% the height figure moves it. At 6.34cm it sets 8.56cm wide against a 14.9cm
+% text block, which leaves about 3cm of white either side. That is the honest
+% cost of a near-square figure on a wide page, and the alternative is a text
+% column beside it rather than a bigger figure.
 %
-% The reference product is SPIReS (SPIRES_HIST v1), NOT MODSCAG — the figure's
-% own colorbar says so. They are different spectral-mixture retrievals and
-% research/FSCA_PRODUCT_NOTES.md is explicit that one must not be relabelled
-% the other. Slide 08's panels are MODSCAG; do not merge the two captions.
+% The caption states only what the panels do not. DJF, MAM and the two
+% significance counts are all printed on the figure itself, so repeating them
+% would be spending caption on what the canvas already says.
 \begin{frame}[t]
-\frametitle{fSCA Bias, Wet Years against Dry}
-\vspace{0.45em}
-\begin{center}
-\includegraphics[width=0.995\linewidth]{wy2023_wet_dry_composite_rot.png}
-\end{center}
+\frametitle{fSCA Bias, Winter against Spring}
 \vspace{0.30em}
-\figcaption{MERRA-2 minus SPIReS, normalized mean fSCA bias, WY2010--2023.
-Wet water years above, dry below; May at left, November at right.
-Hatching marks uncorrected two-sided $p < 0.05$.}
+{\centering\includegraphics[height=6.34cm]{merra2_modscag_seasonal_bias.png}\par}
+\vspace{0.45em}
+\figcaption{MERRA-2 minus MODSCAG, mean fSCA bias, WY2010--2023.
+The model runs low against the satellite in both seasons.}
 \end{frame}
