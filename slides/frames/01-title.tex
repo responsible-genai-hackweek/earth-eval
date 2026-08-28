@@ -7,9 +7,15 @@
 %
 % THE MARK BAND is the reason the type above it is set tighter than it would
 % otherwise be. Four marks at ~2cm need about 2.5cm of the 9cm page including
-% their clearance, so the title dropped from 25pt to 22 and every gap in the
-% block came in. Do not restore the old sizes without taking the band back
-% down — the two compete for the same page.
+% their clearance, so every gap in the block came in. Do not open them up
+% without taking the band back down — the two compete for the same page.
+%
+% TITLE SIZE is bound by the WIDTH of the second line, not by the page's
+% height: "for NASA Reanalyses --- Colorado Snowpack" sets 14.1cm at 19pt
+% against a 14.9cm text block, so 20pt overruns and trips Overfull \hbox.
+% Measured off the render, not guessed. \fitline cannot help here — it
+% measures a single line, and shrinking the two independently would leave a
+% title set at two different sizes. If the wording changes, re-measure.
 %
 % Marks are SYMBOLS ONLY, no wordmark lockups: a lockup's cap height is a
 % fraction of its bounding box, so at a shared height it reads as a whisper
@@ -36,7 +42,7 @@
 \begin{frame}[plain]
   \vspace*{0.15cm}
   \begin{center}
-    {\fontsize{22}{27}\selectfont\bfseries\color{accent}\PosterTitleBreak\par}
+    {\fontsize{19}{23}\selectfont\bfseries\color{accent}\PosterTitleBreak\par}
     \vspace{0.34cm}
     {\large\color{accentDeep}\fitline{\PosterSubtitle}\par}
     \vspace{0.24cm}

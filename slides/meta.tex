@@ -1,10 +1,17 @@
 % Per-deck metadata. \input by main.tex after the preamble.
-\newcommand{\PosterTitle}{Colorado Snowpack in Two Reanalyses}
+\newcommand{\PosterTitle}{Agentic Data Pipeline Orchestration for NASA
+Reanalyses --- Colorado Snowpack}
 
 % Display form of the title, broken where it should break on the title slide.
-% \PosterTitle stays unbroken: it also feeds \title's short form, where a \\
-% would misbehave.
-\newcommand{\PosterTitleBreak}{Colorado Snowpack\\in Two Reanalyses}
+% \PosterTitle stays unbroken: it also feeds \title's short form and the PDF
+% metadata, where a \\ would misbehave.
+%
+% --- rather than a literal em dash: preamble.tex has to make the Unicode
+% character active for Tectonic to set it at all, and \PosterTitle also feeds
+% hyperref's metadata, where an active character is one more thing to go wrong.
+% The ligature needs neither.
+\newcommand{\PosterTitleBreak}{Agentic Data Pipeline Orchestration\\
+for NASA Reanalyses --- Colorado Snowpack}
 
 \newcommand{\PosterSubtitle}{MERRA-2 and ERA5, Water Years 1981--2026}
 \newcommand{\PosterVenue}{Responsible Gen-AI for NASA Earthdata Hackweek}
