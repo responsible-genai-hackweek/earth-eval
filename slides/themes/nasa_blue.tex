@@ -1,0 +1,24 @@
+% nasa_blue — palette and symbolic bindings. \input by colors.tex.
+% After ~/DavidFillmore/Media/templates/nasa_blue/colors.tex, extended with the
+% three seam names this deck's slides need beyond the shipped accent trio.
+
+% --- Official NASA brand palette ---
+% NASA's core brand is three colours (blue, red, white), stable since 1992.
+% NASA Blue PMS 287 C, NASA Red PMS Bright Red C. White is the third — use
+% plain white.
+\definecolor{nasaBlue}{HTML}{0B3D91}
+\definecolor{nasaRed}{HTML}{FC3D21}
+
+% --- Symbolic seam ---
+% Slides use ONLY these; never the nasa* names above. That is the portability
+% contract that makes a theme switch a one-line edit in colors.tex.
+\colorlet{accent}{nasaBlue}              % primary chrome: title bar, block titles
+\colorlet{accentSoft}{nasaRed}           % second tier: alerts, annotation, gates
+\colorlet{accentDeep}{nasaBlue!70!black} % deep ink: diagram text, captions
+\colorlet{accentFill}{nasaBlue!16!white} % diagram node fill
+\colorlet{accentTint}{nasaBlue!8!white}  % block body ground
+\colorlet{mutedInk}{black!42}            % de-emphasised labels
+
+% The meatball is a full-colour insignia and does not reverse to white by a
+% fill swap; on a dark ground it needs a white plate.
+\newcommand{\themelogo}{nasa_logo.pdf}

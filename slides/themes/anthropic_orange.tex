@@ -1,0 +1,38 @@
+% anthropic_orange — palette and symbolic bindings. \input by colors.tex.
+%
+% After ~/DavidFillmore/Media/templates/anthropic_orange/colors.tex, with ONE
+% deliberate departure. That template is single-seam: it sets
+% accentSoft = accent, so every tier is the one clay. This deck cannot use
+% that. Slides 02 and 04 are built on a real contrast between a block and an
+% alertblock — specification against constraint, archive against trap — and
+% under a single seam the two blocks become the same colour and the argument
+% goes with them. So accentSoft is bound to Anthropic's dark brown, the other
+% end of the same brand family: the alert tier reads as the grave one rather
+% than the loud one, which suits a warm palette with no red in it.
+
+% --- Anthropic palette ---
+% Clay is extracted from Claude_by_Anthropic.svg; the browns are the family it
+% sits in, as recorded in Media/decks/agentic_ai/colors.tex.
+\definecolor{claudeClay}{RGB}{217,119,87}    % Anthropic orange
+\definecolor{claudeBrown}{HTML}{3D3929}      % dark brown
+\definecolor{claudeKraft}{HTML}{D4A27F}      % kraft, the light end
+\definecolor{claudeBrownMid}{HTML}{886D54}   % midpoint of brown and kraft
+
+% --- Symbolic seam ---
+% Slides use ONLY these; never the claude* names above.
+%
+% CONTRAST, measured, not assumed: white on clay is 3.12:1. That clears WCAG AA
+% for large text and does not clear it for body text, so clay is a GROUND for
+% bold headings only — the frametitle bar and block titles — and never carries
+% body copy. Body-weight text takes accentDeep (11.9:1 on white) or accentSoft
+% (11.0:1). This is the same trade the shipped anthropic_orange template and
+% agentic_ai's \claudeslide both make, and it is fine on a projector at size;
+% it is written down here so it stays a decision rather than an oversight.
+\colorlet{accent}{claudeClay}                 % primary chrome
+\colorlet{accentSoft}{claudeBrown}            % second tier: alerts, annotation
+\colorlet{accentDeep}{claudeClay!62!black}    % deep ink: diagram text, captions
+\colorlet{accentFill}{claudeKraft!32!white}   % diagram node fill
+\colorlet{accentTint}{claudeClay!10!white}    % block body ground
+\colorlet{mutedInk}{claudeBrown!52!white}     % de-emphasised labels
+
+\newcommand{\themelogo}{Claude_symbol_clay.pdf}

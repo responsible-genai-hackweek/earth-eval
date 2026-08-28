@@ -1,4 +1,5 @@
-% hackweek_snowpack preamble — a projected 16:9 talk in the NASA theme.
+% hackweek_snowpack preamble — a projected 16:9 talk. The theme is picked in
+% colors.tex; nothing here names a palette colour.
 %
 % Architecture follows ~/DavidFillmore/Media/decks/agentic_ai (16:9 beamer,
 % Tectonic/XeTeX, fontspec before colors.tex, listings not minted), NOT that
@@ -62,7 +63,7 @@
 \setbeamercolor{frametitle}{bg=accent, fg=white}
 \setbeamercolor{title}{fg=accent}
 \setbeamercolor{block title}{bg=accent, fg=white}
-\setbeamercolor{block body}{bg=nasaTintBlue, fg=black}
+\setbeamercolor{block body}{bg=accentTint, fg=black}
 \setbeamercolor{block title alerted}{bg=accentSoft, fg=white}
 \setbeamercolor{block body alerted}{bg=accentSoft!8!white, fg=black}
 \setbeamercolor{item}{fg=accent}
@@ -122,11 +123,27 @@
 % \codepath{...} — typewriter formatting for path and identifier references.
 \newcommand{\codepath}[1]{\texttt{\small #1}}
 
-% --- Caption line --------------------------------------------------------
+% --- Caption lines -------------------------------------------------------
 % \figcaption{...} — the one line of prose a figure slide is allowed. Set
 % small, in the deep tier, so it reads as annotation rather than body text.
 \newcommand{\figcaption}[1]{%
   {\centering\small\color{accentDeep}#1\par}}
+
+% \figaside{...} — the qualifying line UNDER a caption: the caveat, the
+% product name a number is meaningless without, the second reading.
+%
+% ITALIC, not merely a second colour. Under nasa_blue the tier was carried by
+% hue alone — NASA red against NASA blue — and that broke on the switch to
+% anthropic_orange, where accentSoft and accentDeep are two warm browns a few
+% steps apart and the aside merged into the caption above it. A warm
+% monochrome palette has no second hue to spend, so the distinction is made
+% structurally and works under either theme.
+% The optional argument is the alignment: \centering by default, because the
+% usual place for an aside is under a centred figure caption. Slide 05 passes
+% \raggedright — its aside closes a left-aligned text column, where a centred
+% line reads as a mistake rather than as a distinct note.
+\newcommand{\figaside}[2][\centering]{%
+  {#1\scriptsize\itshape\color{accentSoft}#2\par}}
 
 % --- Claude Code CLI transcript panel ------------------------------------
 % Authentic terminal read: set in Menlo, the macOS Terminal font, loaded
