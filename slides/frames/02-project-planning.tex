@@ -1,7 +1,8 @@
 % 02-project-planning. The repository's own three-step vocabulary — research,
 % then plan, then implement (merra_modis_comparison/CLAUDE.md, "Workflow") —
 % drawn as a chain, with a review gate between phases and the artifact each
-% phase left behind counted under it.
+% phase left behind counted under it; then what a SKILL is, which is the
+% mechanism that carried the guidance into every one of those phases.
 %
 % The counts are real and were measured, not estimated:
 %   research/  3 notes   FSCA_PRODUCT_NOTES, SNOTEL_PRODUCT_NOTES, COARSE_DEM_NOTES
@@ -12,11 +13,24 @@
 %   tests/   329 tests across 14 files
 % Re-measure before the talk if the branch has moved.
 %
-% The two boxes are the point of the slide. A plan that only fixed WHAT TO
-% COMPUTE would be unremarkable; this one also fixed WHAT MAY BE CLAIMED from
-% the result, and that half is what kept a plausible wrong headline off the
-% figures. Both lists are compressed from CLAUDE.md's own sections ("Scientific
-% invariants" and "Claims discipline").
+% THE TWO BOXES THAT USED TO SIT HERE — "Fixed Before Any Code" and "Fixed
+% Before Any Number" — were dropped at David's direction, so that 03 could be
+% given over entirely to the eight project skills. Three title attempts and the
+% reasoning that killed the first two are in this file's git history. If the
+% pair is ever restored, read that first: the failures were about VOCABULARY,
+% not layout, and they build clean and read fluently while saying nothing.
+%
+% THE SKILL.md CARD came from the left column of 03, and it belongs here rather
+% than beside the eight names: a skill is HOW the guidance reached each phase of
+% the chain above it, so the two halves of this slide are one mechanism. It is
+% DRAWN rather than quoted because the frontmatter is `name` and `description`,
+% and the description is what the agent matches on to decide whether to load the
+% file at all. That matching is the point, so it gets the annotation.
+%
+% The card keeps the size it was tuned at in the narrower column. There is spare
+% width here, but the extra went to the text beside it, which is the line the
+% room has to read from the back — the card is a picture of a file, not
+% something anyone reads.
 \begin{frame}[t]
 \frametitle{Project Planning}
 \vspace{0.30em}
@@ -50,74 +64,46 @@
   \node[art] at (11.55,-0.56) {\codepath{tests/}\\329 tests};
 \end{tikzpicture}
 \end{center}
-\vspace{0.35em}
-% TITLES ARE A MATCHED PAIR — "Fixed Before Any Code" / "Fixed Before Any
-% Number" — and each stands on its own. Two concrete nouns, so they are
-% parallel, and the pair carries the argument the slide exists for: the timing.
-% Before a single number was quoted, the plan had settled which numbers the
-% data would be able to support. That is literally true, not a flourish — the
-% right-hand set was established by measurement over WY2000-WY2026 before the
-% full record was built (plan/SNOWPACK_REANALYSIS_PLAN.md, section 6.1).
-%
-% TWO EARLIER VERSIONS FAILED. Do not go back to either.
-%
-% "The Plan Fixes" / "And What May Be Claimed" was written to be read across
-% the gap as one sentence. A box title is a label, not a clause fragment, and
-% nobody assembles a sentence across two separately framed boxes — least of all
-% two in different colours, which says outright that they are different things.
-% The join did not even parse: the left box takes noun phrases and completes as
-% a sentence; the right-hand bullets were full clauses.
-%
-% "Fixed Before Any Claim" with imperative bullets then failed on VOCABULARY,
-% which is the harder fault because it builds clean and reads fluently. Three
-% terms said nothing to the room:
-%
-%   "every number names its product"  — devoid of meaning. "Product" is archive
-%     vocabulary for a dataset, and the sentence never says WHY. The real point
-%     is that the two models disagree about amount by a factor of three or
-%     more, so any snow amount is a fact about THAT MODEL and not about
-%     Colorado. The bullet now says which model, in those words.
-%   "load-bearing"  — an engineering metaphor. The real point is that the last
-%     months of WY2026 come from ERA5T, the preliminary stream, which can still
-%     be revised. The bullet now says preliminary.
-%   "claim"  — reads as jargon in a title. The box is about what the result may
-%     say, and "number" is the concrete thing every bullet is actually about.
-%
-% Bullets are noun phrases, matching the left box, so both lists genuinely
-% complete their own title. Each carries its REASON where it has room —
-% "not MERRA-2 in April, it has melted out" is a rule and its justification in
-% seven words, which the bare rule was not. Sources, in order:
-% CLAUDE.md "Claims discipline" bullets 5, 5, 2, 3 and 6.
-%
-% Every term here should survive being said out loud to someone who does not
-% work on this. That is the test the previous two versions failed.
-\begin{columns}[T,onlytextwidth]
-\begin{column}{0.395\textwidth}
-\begin{block}{Fixed Before Any Code}
-\small
-\begin{itemize}\itemsep0.12em
-  \item the question
-  \item domain and period
-  \item variables, units, conversions
-  \item the weighting rule
-  \item what is out of scope
-\end{itemize}
-\end{block}
+\vspace{0.90em}
+% [c], not [T]: the card and the text beside it are different heights and want
+% their centres level, not their tops. Under [T] the two lines of text hung off
+% the top of the card and the Claude mark fell below its bottom edge.
+\begin{columns}[c,onlytextwidth]
+\begin{column}{0.43\textwidth}
+\begin{center}
+\begin{tikzpicture}[
+  card/.style={draw=accent, very thick, rounded corners=4pt, fill=white},
+  fm/.style={font=\scriptsize\ttfamily, text=accentDeep, anchor=west},
+  bd/.style={font=\scriptsize, text=accentDeep, anchor=west}]
+
+  % The file: frontmatter above the rule, body below.
+  \draw[card, fill=accentFill] (0,0.16) rectangle (5.05,0.78);
+  \draw[card]                    (0,-2.18) rectangle (5.05,0);
+  \node[font=\small\ttfamily, text=accentDeep] at (2.52,0.47) {SKILL.md};
+
+  \node[fm] at (0.26,-0.32) {name:};
+  \node[fm] at (0.26,-0.70) {description:};
+  % The annotation the slide exists for.
+  \node[font=\scriptsize\itshape, text=accentSoft, anchor=west]
+    at (2.20,-0.70) {when to use it};
+  \draw[accentSoft, thick] (0.26,-0.98) -- (4.79,-0.98);
+  \node[bd] at (0.26,-1.30) {the traps};
+  \node[bd] at (0.26,-1.64) {the conventions};
+  \node[bd] at (0.26,-1.98) {what may be claimed};
+\end{tikzpicture}
+\end{center}
 \end{column}
-\begin{column}{0.575\textwidth}
-% Alerted, so the pair reads as constraint against specification rather than as
-% two lists of the same kind. Under anthropic_orange that is the dark brown —
-% the grave tier, not a louder one; see themes/anthropic_orange.tex.
-\begin{alertblock}{Fixed Before Any Number}
-\small
-\begin{itemize}\itemsep0.12em
-  \item which years were extreme, not how much snow
-  \item which model each number came from
-  \item daily data for peak snowpack, never weekly
-  \item not MERRA-2 in April, it has melted out
-  \item where WY2026 rests on preliminary ERA5T
-\end{itemize}
-\end{alertblock}
+\begin{column}{0.53\textwidth}
+% Set larger than it was on 03: this is the punchline of the mechanism and the
+% room reads it from the back, whereas the card is a picture of a file.
+{\raggedright\normalsize the agent matches on the description\par}
+\vspace{0.55em}
+{\raggedright\normalsize \dots\ so it loads itself,\\
+\hspace*{1.0em}before it can get it wrong\par}
+% The Claude mark beside the card — the agent these were written for. The
+% starburst, not the wordmark lockup: symbols only, deck-wide.
+\vspace{0.55em}
+\includegraphics[height=2.20cm]{Claude_symbol_clay.pdf}
 \end{column}
 \end{columns}
 \end{frame}

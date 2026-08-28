@@ -75,6 +75,12 @@ repository builds the deck on its own.
 
 ## Conventions
 
+These are also written down as the `building-beamer-decks` skill in
+`.claude/skills/`, together with the Tectonic traps that produce a clean build
+and a wrong page. This README is the deck's own record; the skill is what an
+agent loads before touching it. Change one and change the other.
+
+
 - One slide per file; `main.tex` is the ordering source of truth.
 - Every number on a slide comes from `merra_modis_comparison/results/FINDINGS.md`,
   which is generated from the daily checkpoints. Re-measure before the talk if
@@ -82,7 +88,11 @@ repository builds the deck on its own.
   tests, notes) are measured off the tree the same way.
 - The claims discipline in `merra_modis_comparison/CLAUDE.md` applies to the
   slides as much as to the report: rank rather than magnitude, and every figure
-  names its product.
+  says which model its numbers came from. MERRA-2 and ERA5 disagree about snow
+  amount by roughly threefold in a wet year and by more than an order of
+  magnitude in a dry one, so an amount is a fact about the model and not about
+  Colorado — and WY2026, the year the deck is about, is where that gap is
+  widest.
 - The plots keep their own scientific palette — NASA blue for MERRA-2, NASA red
   for ERA5 — under **either** deck theme. Figure colour encodes data, not
   chrome, and that mapping was specified separately.
@@ -96,9 +106,14 @@ repository builds the deck on its own.
 - `listings`, never `minted` — no shell-escape under Tectonic.
 - Links render as regular text, underlined, via `\decklink`, and are never
   shrunk relative to the line they sit in.
-- `figures/wy2023_wet_dry_composite_rot.png` is pre-rotated 90° **counter-clockwise**
-  (`sips -r -90`) so months run November to May left to right. Clockwise
-  reverses them. The rotation is baked into the file, not applied in LaTeX.
+- `figures/wy2023_wet_dry_composite_rot.png` is pre-rotated into landscape and
+  baked into the file (`sips`), not applied in LaTeX. The direction is a **trade**:
+  the month names are already-rotated matplotlib y-labels, so no rigid rotation
+  gives upright labels *and* forward time. **Clockwise** (current) sets the labels
+  upright but reverses the columns to May-at-left; counter-clockwise runs months
+  November to May left to right with every label upside down. Slide 07's caption
+  states whichever order is on the page — check it after any re-rotation.
+  Regenerating the figure in a landscape layout is the only way to get both.
 - The UW Block W may not be recoloured, rotated, cropped or stretched, and the
   registered version is the one required when it stands alone. See
   `graphics/logos/SOURCES.md`.

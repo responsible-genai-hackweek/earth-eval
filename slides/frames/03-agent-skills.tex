@@ -1,94 +1,81 @@
-% 03-agent-skills. What a skill IS on the left, drawn as the file itself; the
-% eight we actually defined on the right, grouped by what they govern.
+% 03-agent-skills. The nine skills this project actually wrote, given the whole
+% frame. What a skill IS now lives on 02, beside the workflow chain the skills
+% carried guidance into; this slide is only the specific nine.
 %
-% The SKILL.md card is DRAWN rather than quoted: the frontmatter is `name` and
-% `description`, and the description is what the agent matches on to decide
-% whether to load the file at all. That matching is the whole mechanism the
-% slide is trying to convey, so it gets the annotation.
-%
-% The eight names are exactly .claude/skills/*/ on this branch. The grouping is
+% The names are exactly .claude/skills/*/ on this branch. The grouping is
 % editorial and is not in the repo:
 %   Science     reanalysis-snowpack-comparison, snow-hydrology-fsca-evaluation,
 %               modis-merra-regridding, snow-bias-statistics-and-figures
 %   Run         earthdata-streaming-checkpoints, resumable-fetch-run-integrity,
 %               derived-quantity-integrity
-%   Figures     designing-thematic-figures
-% Names are set in \texttt at \scriptsize because several run long and the
-% column cannot take them at body size; they are directory names, so the
-% monospace is honest rather than decorative.
+%   Comms       designing-thematic-figures, building-beamer-decks
+%
+% building-beamer-decks is the deck's own build written down as a skill: the
+% Tectonic gates, the theme seam, the figure and mark conventions, and the rule
+% that a green build is not proof a page looks right. It is listed on the slide
+% it describes, which is the honest place for it.
+%
+% TWO COLUMNS, name then gloss. A single column of names left the right-hand
+% half of every full-width block empty, and bare directory names say nothing to
+% a room that has never seen them. Each gloss is compressed from that skill's
+% own `description:` frontmatter — which is the mechanism 02 has just described,
+% so the slide demonstrates the thing it lists rather than decorating it.
+%
+% A GLOSS SAYS WHAT THE SKILL GOVERNS, not when to load it. Lifting a skill's
+% trigger clause verbatim reads on a projected slide as a claim about THIS deck:
+% designing-thematic-figures is triggered by "a figure for readers who already
+% know the field", and as a gloss that said the deck's own audience was expert,
+% which a hackweek room is not. Compress what the skill CONTROLS instead.
+%
+% GLOSSES MUST FIT ONE LINE. Sentence fragments, no terminal full stop, and
+% about 45 characters is the ceiling. The name column is fixed at 6.05cm with a
+% 0.7em gutter after it: the longest name, snow-bias-statistics-and-figures at
+% 32 characters, sets ~5.64cm at \small in the mono face, and at the 5.9cm the
+% column was first cut to it touched its own gloss with no gap at all. That
+% leaves ~8.2cm for the gloss. One that wraps breaks the row grid and costs a
+% line the frame does not have.
+%
+% p{} rather than l for the first column so the gloss column starts at the SAME
+% x in all three blocks. Under l each tabular sizes to its own longest name and
+% the three blocks step raggedly against each other.
+%
+% HEIGHT is the binding constraint: nine rows, three block titles and the
+% closing line against a body that gained only the few millimetres the dropped
+% frame number used to occupy. \arraystretch and the inter-block \vspace are
+% both tuned against the render — re-measure if a tenth skill is added.
 \begin{frame}[t]
-\frametitle{Agent Skills}
-\vspace{0.30em}
-\begin{columns}[T,onlytextwidth]
-\begin{column}{0.395\textwidth}
-% [T] aligns the tops of the column BOXES, but this column's first content is a
-% tikzpicture whose bounding box starts at its own y=0.78 — so the card sat
-% ~0.5cm below the first block opposite it. Lift the column by that much rather
-% than moving every node in the picture.
-\vspace*{-0.42cm}
-\begin{center}
-\begin{tikzpicture}[
-  card/.style={draw=accent, very thick, rounded corners=4pt, fill=white},
-  fm/.style={font=\scriptsize\ttfamily, text=accentDeep, anchor=west},
-  bd/.style={font=\scriptsize, text=accentDeep, anchor=west}]
-
-  % The file: frontmatter above the rule, body below.
-  \draw[card, fill=accentFill] (0,0.16) rectangle (5.05,0.78);
-  \draw[card]                    (0,-2.18) rectangle (5.05,0);
-  \node[font=\small\ttfamily, text=accentDeep] at (2.52,0.47) {SKILL.md};
-
-  \node[fm] at (0.26,-0.32) {name:};
-  \node[fm] at (0.26,-0.70) {description:};
-  % The annotation the slide exists for.
-  \node[font=\scriptsize\itshape, text=accentSoft, anchor=west]
-    at (2.20,-0.70) {when to use it};
-  \draw[accentSoft, thick] (0.26,-0.98) -- (4.79,-0.98);
-  \node[bd] at (0.26,-1.30) {the traps};
-  \node[bd] at (0.26,-1.64) {the conventions};
-  \node[bd] at (0.26,-1.98) {what may be claimed};
-\end{tikzpicture}
-\end{center}
-\vspace{0.15em}
-{\raggedright\small the agent matches on the description\par}
-\vspace{0.35em}
-{\raggedright\small \dots\ so it loads itself,\\
-\hspace*{1.0em}before it can get it wrong\par}
-% The Claude mark under the card — the agent these were written for. The
-% starburst, not the wordmark lockup: symbols only, deck-wide. A symbol needs
-% roughly twice a lockup's height to carry the same weight, because a lockup
-% spends most of its bounding box on the type's leading rather than on ink.
-\vspace{0.45em}
-\includegraphics[height=1.30cm]{Claude_symbol_clay.pdf}
-\end{column}
-\begin{column}{0.585\textwidth}
+\frametitle{Project Skills}
+\vspace{0.10em}
 \begin{block}{Science}
-\scriptsize
-\begin{itemize}\itemsep0.02em
-  \item \texttt{reanalysis-snowpack-comparison}
-  \item \texttt{snow-hydrology-fsca-evaluation}
-  \item \texttt{modis-merra-regridding}
-  \item \texttt{snow-bias-statistics-and-figures}
-\end{itemize}
+\small
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{@{}p{6.05cm}@{\hspace{0.7em}}l@{}}
+\texttt{reanalysis-snowpack-comparison}   & MERRA-2 against ERA5, and which claim holds\\
+\texttt{snow-hydrology-fsca-evaluation}   & the Colorado fSCA comparison, end to end\\
+\texttt{modis-merra-regridding}           & 500 m pixels onto coarse model cells\\
+\texttt{snow-bias-statistics-and-figures} & bias, MAE, significance, low-snow masks\\
+\end{tabular}
 \end{block}
-\vspace{-0.15em}
+\vspace{-0.58em}
 \begin{block}{Run Integrity}
-\scriptsize
-\begin{itemize}\itemsep0.02em
-  \item \texttt{earthdata-streaming-checkpoints}
-  \item \texttt{resumable-fetch-run-integrity}
-  \item \texttt{derived-quantity-integrity}
-\end{itemize}
+\small
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{@{}p{6.05cm}@{\hspace{0.7em}}l@{}}
+\texttt{earthdata-streaming-checkpoints} & thousands of granules, atomic checkpoints\\
+\texttt{resumable-fetch-run-integrity}   & a run interrupted, resumed, or partial\\
+\texttt{derived-quantity-integrity}      & a ratio or rate over aggregated data\\
+\end{tabular}
 \end{block}
-\vspace{-0.15em}
+\vspace{-0.58em}
 \begin{block}{Communication}
-\scriptsize
-\begin{itemize}\itemsep0.02em
-  \item \texttt{designing-thematic-figures}
-\end{itemize}
+\small
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{@{}p{6.05cm}@{\hspace{0.7em}}l@{}}
+\texttt{designing-thematic-figures} & one point per figure, nothing spare\\
+\texttt{building-beamer-decks}      & this deck: Tectonic, theme seam, gates\\
+\end{tabular}
 \end{block}
 \vspace{0.20em}
 {\raggedright\scriptsize\color{accentDeep}
-Eight skills, written during the work, from what went wrong in it.\par}
-\end{column}
-\end{columns}
+Nine skills, written during the work, from what went wrong in it.\par}
 \end{frame}

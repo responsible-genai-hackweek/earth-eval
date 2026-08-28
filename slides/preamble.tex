@@ -91,13 +91,16 @@
   \end{beamercolorbox}%
 }
 
-% Footline: the frame number alone, in the accent, at the right margin. No
-% bar, no author/title repeat — the deck is eight slides and none of it earns
-% a persistent strip.
-\setbeamertemplate{footline}{%
-  \hfill{\usebeamerfont{footline}\scriptsize\color{accent}\insertframenumber}%
-  \hspace{0.55cm}\vskip3pt%
-}
+% Footline: EMPTY, at David's direction. It carried the frame number alone in
+% the accent at the right margin; no bar and no author/title repeat, because a
+% nine-slide deck earns no persistent strip — and on inspection the number did
+% not earn its corner either.
+%
+% An empty template is zero-height, so every frame gains the few millimetres the
+% number occupied. That can only relieve an Overfull \vbox, never cause one, but
+% it does mean a frame tuned against the old body height now sits slightly high.
+% Restore by putting \insertframenumber back in the group below.
+\setbeamertemplate{footline}{}
 
 % --- \fitline{<content>} -------------------------------------------------
 % Set <content> on one line within \linewidth, shrinking only if it would

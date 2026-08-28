@@ -2,15 +2,28 @@
 % frame at full width.
 %
 % ROTATION. The source is 1282 x 3387 — a seven-row portrait column that cannot
-% be read on a 16:9 page at any useful size. It is rotated 90 degrees
-% COUNTER-CLOCKWISE, and the direction is not arbitrary: CCW sends the original
-% top row to the left column, so months run November to May LEFT TO RIGHT.
-% Clockwise rotation was rendered and compared, and puts May at the left with
-% time running backwards. The rotation is baked into the file (sips -r -90),
-% not applied here with \rotatebox, so the aspect ratio \includegraphics sees
-% is the one on the page.
+% be read on a 16:9 page at any useful size, so it is rotated into landscape.
+% The rotation is baked into the file (sips), not applied here with \rotatebox,
+% so the aspect ratio \includegraphics sees is the one on the page.
 %
-% After rotation: dry water years on the TOP row, wet on the BOTTOM; within
+% THE DIRECTION IS A TRADE, and it has been made both ways. The month names are
+% matplotlib y-labels, already set at 90 degrees in the source, so a rigid
+% rotation cannot leave them upright and keep time running forwards:
+%   CCW (sips -r -90)  months read November to May LEFT TO RIGHT, but every
+%                      month name and Latitude label lands UPSIDE DOWN.
+%   CW  (sips -r 90)   labels land upright and readable, but the columns
+%                      reverse: May at the left, time running backwards.
+% The deck ran CCW until the upside-down labels were caught in a render; it is
+% now CW, at David's direction. The caption states the reversed month order
+% outright, because the figure no longer reads left to right and a reader who
+% assumes it does will read the season backwards.
+%
+% Only regenerating the figure in a LANDSCAPE layout — months as columns from
+% the start — gets upright labels and forward time together. There is no
+% generator for this figure on this branch; it survives from the superseded
+% fSCA experiment, so that is not a quick change.
+%
+% After rotation: wet water years on the TOP row, dry on the BOTTOM; within
 % each panel latitude now runs horizontally and longitude vertically, which is
 % the unavoidable cost of rotating a map figure.
 %
@@ -26,6 +39,6 @@
 \end{center}
 \vspace{0.30em}
 \figcaption{MERRA-2 minus SPIReS, normalized mean fSCA bias, WY2010--2023.
-Dry water years above, wet below; November at left, May at right.
+Wet water years above, dry below; May at left, November at right.
 Hatching marks uncorrected two-sided $p < 0.05$.}
 \end{frame}
